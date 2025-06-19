@@ -1,0 +1,1 @@
+export const API_BASE = "https://hard-core.onrender.com"

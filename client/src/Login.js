@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "./config";
 
 function Login({ setRole }) {
   const [email, setEmail] = useState("");
@@ -16,16 +17,16 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch("http://localhost:5000/login", {
+      const response = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        credentials: "include" // חשוב אם Flask משתמש ב-session
       });
 
       const data = await response.json();
       console.log("Login response data:", data);
       console.log("Set role to:", data.role);
-
 
       if (data.token && data.role) {
         localStorage.setItem("token", data.token);
