@@ -4,11 +4,16 @@ import sqlite3
 import bcrypt
 import jwt
 import datetime
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
 print("🚀 Flask is starting...")
-app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+import os
+
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 DB_PATH = 'gym.db'
@@ -97,5 +102,7 @@ def me():
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+if __name__ == "__main__":
+    from os import environ
+    app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))
