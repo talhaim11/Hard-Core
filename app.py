@@ -6,13 +6,13 @@ import jwt
 import datetime
 from dotenv import load_dotenv
 load_dotenv()
+import os
 
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-import os
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
