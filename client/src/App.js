@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./Login";
 import AdminPage from "./AdminPage";
 import UserPage from "./UserPage";
+import AdminUserManager from "./AdminUserManager"; // ✅ הוספת קובץ הניהול
 
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem("role"));
@@ -19,12 +20,22 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login setRole={setRole} />} />
+
         <Route
           path="/admin"
           element={
             role === "admin" ? <AdminPage /> : role === null ? null : <Navigate to="/" />
           }
         />
+        
+        {/* ✅ דף ניהול משתמשים - רק לאדמין */}
+        <Route
+          path="/admin/users"
+          element={
+            role === "admin" ? <AdminUserManager /> : <Navigate to="/" />
+          }
+        />
+
         <Route
           path="/user"
           element={
