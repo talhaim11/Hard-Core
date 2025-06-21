@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { API_BASE } from "./config";
 
 function Login({ setRole }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+    const [token, setToken] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -17,12 +18,12 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch(`${API_BASE}/login`, {
+        const response = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include" // חשוב אם Flask משתמש ב-session
-      });
+        body: JSON.stringify({ email, password, token }),
+        credentials: "include"
+        });
 
       const data = await response.json();
       console.log("Login response data:", data);
@@ -42,26 +43,33 @@ function Login({ setRole }) {
     }
   };
 
-  return (
+    return ( 
     <div>
-      <h2>Login</h2>
-      <input
+        <h2>Login</h2>
+        <input
         type="email"
         placeholder="Email"
         value={email}
         onChange={e => setEmail(e.target.value)}
-      />
-      <br />
-      <input
+        />
+        <br />
+        <input
         type="password"
         placeholder="Password"
         value={password}
         onChange={e => setPassword(e.target.value)}
-      />
-      <br />
-      <button onClick={handleLogin}>Login</button>
+        />
+        <br />
+        <input
+        type="text"
+        placeholder="Access Token"
+        value={token}
+        onChange={e => setToken(e.target.value)}
+        />
+        <br />
+        <button onClick={handleLogin}>Login</button>
     </div>
-  );
+    );
 }
 
 export default Login;
