@@ -8,6 +8,11 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 
+ALLOWED_TOKENS = {
+    "abc123": "user1@example.com",
+    "admin777": "admin@example.com",
+    "xyz999": "guest@example.com"
+}
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
@@ -75,19 +80,23 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
+    token = data.get('token')
 
+    # בדיקת טוקן קודם כול
+    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
+        return jsonify({'error': 'Invalid token or email'}), 401
+
+    # בדיקת סיסמה מול SQLite
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
         row = c.fetchone()
-        print("Password from client:", password)
-        print("Password from DB (hashed):", row[1])
-        print("Password match:", bcrypt.checkpw(password.encode('utf-8'), row[1]))
 
         if row and bcrypt.checkpw(password.encode('utf-8'), row[1].encode('utf-8') if isinstance(row[1], str) else row[1]):
             token = encode_token(row[0], row[2])
             return jsonify({'token': token, 'role': row[2]})
         return jsonify({'error': 'Invalid credentials'}), 401
+
 
 @app.route('/me', methods=['GET'])
 def me():
