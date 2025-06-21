@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminUserManager from './AdminUserManager'; // ✅ הוספת הקומפוננטה
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const AdminPage = () => {
     <div style={{ padding: '20px' }}>
       <h1>ברוך הבא, אדמין!</h1>
       <button onClick={handleLogout}>התנתק</button>
+
+      {/* ✅ ממשק ניהול המשתמשים */}
+      <AdminUserManager />
     </div>
   );
 };
