@@ -24,9 +24,9 @@ const WorkoutBoard = ({ token }) => {
     <div className="workout-board">
       <h2>לוח אימונים</h2>
       <ul>
-        {sessions.map((session) => (
+        {(Array.isArray(sessions) ? sessions : []).map((session) => (
           <li key={session.id} className="session-item">
-            <div><strong>{session.date}</strong></div>
+            <div><strong>{session.date || session.date_time}</strong></div>
             <div>שם אימון: {session.title}</div>
             <div>מספר נרשמים: {session.participants}</div>
           </li>
