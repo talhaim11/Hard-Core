@@ -34,7 +34,7 @@ const AdminPage = () => {
       <h1>ברוך הבא, אדמין!</h1>
       <button onClick={handleLogout}>התנתק</button>
       <h2>ניהול משתמשים</h2>
-      <p>כאן תוכל לנהל את המשתמשים במערכת.</p> 
+      <p>כאן תוכל לנהל את המשתמשים במערכת.</p>    
       <AdminUserManager />
       <WorkoutBoard />
 
