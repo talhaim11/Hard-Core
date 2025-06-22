@@ -138,6 +138,23 @@ add_location_column()
 add_title_column()
 
 
+def create_attendance_table():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            hour INTEGER NOT NULL,
+            note TEXT,
+            UNIQUE(user_id, date, hour),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )''')
+        conn.commit()
+
+create_attendance_table()
+
+
 # --- ROUTES ---
 @app.route('/register', methods=['POST'])
 def register():
@@ -408,6 +425,68 @@ def debug_bcrypt():
         'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
     })
 
+
+
+@app.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Remove from allowed_tokens as well
+        c.execute("SELECT email FROM users WHERE id = ?", (user_id,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        email = row[0]
+        c.execute("DELETE FROM allowed_tokens WHERE email = ?", (email,))
+        c.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+    return jsonify({'message': 'User deleted successfully'})
+
+@app.route('/attendance', methods=['GET'])
+@token_required
+def get_attendance(current_user):
+    # Get attendance for the next 2 weeks for all users
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=today.weekday()+1)  # Sunday of this week
+    end = start + datetime.timedelta(days=13)  # 2 weeks
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT a.date, a.hour, a.note, u.email, u.id
+            FROM attendance a
+            JOIN users u ON a.user_id = u.id
+            WHERE date(a.date) BETWEEN ? AND ?
+        ''', (start.isoformat(), end.isoformat()))
+        records = c.fetchall()
+    # Group by date and hour
+    attendance = {}
+    for date, hour, note, email, user_id in records:
+        attendance.setdefault(date, {}).setdefault(hour, []).append({
+            'email': email,
+            'user_id': user_id,
+            'note': note
+        })
+    return jsonify({'attendance': attendance, 'start': start.isoformat(), 'end': end.isoformat()})
+
+@app.route('/attendance', methods=['POST'])
+@token_required
+def set_attendance(current_user):
+    data = request.json
+    date = data.get('date')
+    hour = data.get('hour')
+    note = data.get('note', '')
+    user_id = current_user['id']
+    if not date or hour is None:
+        return jsonify({'error': 'Missing date or hour'}), 400
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute('''INSERT OR REPLACE INTO attendance (user_id, date, hour, note) VALUES (?, ?, ?, ?)''',
+                  (user_id, date, hour, note))
+        conn.commit()
+    return jsonify({'message': 'Attendance updated'})
 
 
 if __name__ == "__main__":
