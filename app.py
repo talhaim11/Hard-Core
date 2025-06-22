@@ -11,8 +11,17 @@ from functools import wraps
 from flask import request, jsonify
 import jwt
 
-SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
 
+# --- CONSTANTS ---
+# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
+# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
+# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
+ALLOWED_TOKENS = {
+    "abc123": "user1@example.com",
+    "admin777": "admin@example.com",
+    "xyz999": "guest@example.com"
+}
+SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -37,15 +46,7 @@ def token_required(f):
 
 
 
-# --- CONSTANTS ---
-# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
-# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
-# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
-ALLOWED_TOKENS = {
-    "abc123": "user1@example.com",
-    "admin777": "admin@example.com",
-    "xyz999": "guest@example.com"
-}
+
 
 # --- CONFIGURATION ---
 app = Flask(__name__)

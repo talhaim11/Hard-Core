@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./Login";
 import AdminPage from "./AdminPage";
 import UserPage from "./UserPage";
+import WorkoutBoard from './components/WorkoutBoard';
+
 
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem("role"));
