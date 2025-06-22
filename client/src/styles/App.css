@@ -36,8 +36,9 @@
     transform: rotate(360deg);
   }
 }
-/* Compare this snippet from client/src/styles/Modal.css: */
 
+/*
+==== MODAL STYLES DISABLED ====
 .modal {
   position: fixed;
   top: 0;
@@ -128,3 +129,5 @@
   color: #28a745;
   margin-top: 0.5rem;
 }
+==== END MODAL STYLES ====
+*/
