@@ -309,8 +309,13 @@ def register_to_session(current_user, session_id):
 
     return jsonify({'message': 'Registered successfully'})
 
-
-
+@app.route('/debug_users', methods=['GET'])
+def debug_users():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, email FROM users")
+        users = c.fetchall()
+    return jsonify({'users': users})
 
 if __name__ == "__main__":
     from os import environ
