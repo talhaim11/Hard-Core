@@ -97,6 +97,13 @@ def login():
             return jsonify({'token': token, 'role': row[2]})
         return jsonify({'error': 'Invalid credentials'}), 401
 
+@app.route('/users', methods=['GET'])
+def get_users():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, email, role FROM users")
+        users = [{'id': row[0], 'email': row[1], 'role': row[2]} for row in c.fetchall()]
+    return jsonify(users)
 
 @app.route('/me', methods=['GET'])
 def me():
