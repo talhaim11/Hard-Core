@@ -7,7 +7,40 @@ import datetime
 from dotenv import load_dotenv
 load_dotenv()
 import os
+from functools import wraps
+from flask import request, jsonify
+import jwt
 
+SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            current_user = {
+              "id": data['sub'],
+              "role": data['role']
+            }
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
+
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+
+
+# --- CONSTANTS ---
+# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
+# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
+# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
 ALLOWED_TOKENS = {
     "abc123": "user1@example.com",
     "admin777": "admin@example.com",
@@ -26,14 +59,21 @@ DB_PATH = 'gym.db'
 def create_tables():
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
+        # users table כבר קיימת
+        c.execute('''CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL,
-            subscription TEXT DEFAULT 'single',
-            remaining_entries INTEGER DEFAULT 1
+            date_time TEXT NOT NULL UNIQUE
         )''')
+
+        c.execute('''CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            session_id INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(session_id) REFERENCES sessions(id),
+            UNIQUE(user_id, session_id)  -- מונע רישום כפול לאותו אימון
+        )''')
+
         conn.commit()
 
 create_tables()
@@ -117,6 +157,96 @@ def me():
         return jsonify({'error': 'Invalid or expired token'}), 401
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
+
+@app.route('/book-session', methods=['POST'])
+def book_session():
+    data = request.json
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    payload = decode_token(token)
+    if not payload:
+        return jsonify({'error': 'Invalid or expired token'}), 401
+
+    user_id = payload['sub']
+    date_time = data.get('date_time')  # מחרוזת בפורמט ISO: "2024-07-22T19:00"
+
+    if not date_time:
+        return jsonify({'error': 'Missing date_time'}), 400
+
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        # הכנס את האימון אם הוא לא קיים
+        c.execute("INSERT OR IGNORE INTO sessions (date_time) VALUES (?)", (date_time,))
+        conn.commit()
+
+        # קבל את מזהה האימון
+        c.execute("SELECT id FROM sessions WHERE date_time = ?", (date_time,))
+        session_id = c.fetchone()[0]
+
+        # נסה לרשום את המשתמש לאימון
+        try:
+            c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (user_id, session_id))
+            conn.commit()
+            return jsonify({'message': 'Session booked successfully'})
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Already registered for this session'}), 409
+@app.route('/sessions', methods=['GET'])
+def get_sessions():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
+            FROM sessions s
+            LEFT JOIN user_sessions us ON s.id = us.session_id
+            GROUP BY s.id, s.date
+            ORDER BY s.date ASC
+        """)
+        sessions = [
+            {'id': row[0], 'date': row[1], 'participants': row[2]}
+            for row in c.fetchall()
+        ]
+    return jsonify(sessions)
+@app.route('/sessions/<int:session_id>', methods=['GET'])
+def get_session_details(session_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT u.id, u.email, u.role
+            FROM users u
+            JOIN user_sessions us ON u.id = us.user_id
+            WHERE us.session_id = ?
+        """, (session_id,))
+        users = [
+            {'id': row[0], 'email': row[1], 'role': row[2]}
+            for row in c.fetchall()
+        ]
+    return jsonify(users)
+
+@app.route('/sessions/<int:session_id>', methods=['DELETE'])
+@token_required
+def cancel_registration(current_user, session_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
+        conn.commit()
+    return jsonify({'message': 'Registration cancelled successfully'})
+
+@app.route('/sessions/<int:session_id>', methods=['POST'])
+@token_required
+def register_to_session(current_user, session_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        # בדיקה אם המשתמש כבר רשום
+        c.execute("SELECT * FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
+        if c.fetchone():
+            return jsonify({'message': 'Already registered for this session'}), 200
+
+        # רישום חדש
+        c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (current_user['id'], session_id))
+        conn.commit()
+
+    return jsonify({'message': 'Registered successfully'})
 
 
 if __name__ == "__main__":
