@@ -8,10 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 from functools import wraps
-from flask import request, jsonify
-import jwt
 
-SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
 
 def token_required(f):
     @wraps(f)
@@ -24,7 +21,7 @@ def token_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
 
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = {
               "id": data['sub'],
               "role": data['role']
