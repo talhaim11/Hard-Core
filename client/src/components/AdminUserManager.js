@@ -22,7 +22,7 @@ export default function AdminPanel() {
 
   const addUser = async () => {
     try {
-      await axios.post("https://hard-core.onrender.com/users", {
+      await axios.post("https://hard-core.onrender.com/register", {
         email,
         password,
         token,
