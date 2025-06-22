@@ -37,7 +37,8 @@
   }
 }
 /* Compare this snippet from client/src/styles/Modal.css: */
-/* .modal {
+
+.modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -126,3 +127,4 @@
 .modal-footer .success {
   color: #28a745;
   margin-top: 0.5rem;
+}
