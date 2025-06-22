@@ -48,6 +48,7 @@ def token_required(f):
 
 
 
+
 # --- CONFIGURATION ---
 app = Flask(__name__)
 print("🚀 Flask is starting...")
@@ -317,6 +318,77 @@ def debug_users():
         c.execute("SELECT id, email FROM users")
         users = c.fetchall()
     return jsonify({'users': users})
+
+@app.route('/debug_sessions', methods=['GET'])
+def debug_sessions():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, date_time FROM sessions")
+        sessions = c.fetchall()
+    return jsonify({'sessions': sessions})
+
+@app.route('/debug_user_sessions', methods=['GET'])
+def debug_user_sessions():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT us.id, u.email, s.date_time
+            FROM user_sessions us
+            JOIN users u ON us.user_id = u.id
+            JOIN sessions s ON us.session_id = s.id
+        """)
+        user_sessions = c.fetchall()
+    return jsonify({'user_sessions': user_sessions})
+
+@app.route('/debug', methods=['GET'])
+def debug():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = c.fetchall()
+    return jsonify({'tables': [table[0] for table in tables]})
+
+@app.route('/debug_token', methods=['GET'])
+def debug_token():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 401
+
+    payload = decode_token(token)
+    if not payload:
+        return jsonify({'error': 'Invalid or expired token'}), 401
+
+    return jsonify({'user_id': payload['sub'], 'role': payload['role']})
+
+@app.route('/debug_allowed_tokens', methods=['GET'])
+def debug_allowed_tokens():
+    return jsonify(ALLOWED_TOKENS)
+
+@app.route('/debug_secret_key', methods=['GET'])
+def debug_secret_key():
+    return jsonify({'secret_key': app.config['SECRET_KEY']})
+
+
+@app.route('/debug_env', methods=['GET'])
+def debug_env():
+    env_vars = {key: value for key, value in os.environ.items() if key.startswith('DEBUG_')}
+    return jsonify(env_vars)
+
+@app.route('/debug_db_path', methods=['GET'])
+def debug_db_path():
+    return jsonify({'db_path': DB_PATH})
+
+@app.route('/debug_bcrypt', methods=['GET'])
+def debug_bcrypt():
+    test_password = "test123"
+    hashed = bcrypt.hashpw(test_password.encode('utf-8'), bcrypt.gensalt())
+    return jsonify({
+        'test_password': test_password,
+        'hashed_password': hashed.decode('utf-8'),
+        'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
+    })
+
+
 
 if __name__ == "__main__":
     from os import environ

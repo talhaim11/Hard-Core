@@ -5,6 +5,13 @@ import AdminPage from "./pages/AdminPage";
 import UserPage from "./pages/UserPage";
 import WorkoutBoard from './components/WorkoutBoard';
 
+import { API_BASE } from "./config";
+import './styles/App.css'; // Import your global styles here
+import './styles/AdminPage.css';
+import './styles/UserPage.css';
+import './styles/WorkoutBoard.css';
+import './styles/Login.css';
+
 
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem("role"));
@@ -17,7 +24,8 @@ function App() {
     }
   }, []);
 
-  return (
+   return ( 
+    
     <Router>
       <Routes>
         <Route path="/" element={<Login setRole={setRole} />} />
