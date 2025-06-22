@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { adminUserManagerStyles, userListStyles, userItemStyles } from '../styles/AdminUserManagerStyles';
+import '../styles/AdminUserManager.css';
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -42,7 +42,7 @@ export default function AdminPanel() {
   }, []);
 
   return (
-    <div className={adminUserManagerStyles}>
+    <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} /><br />
       <input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} type="password" /><br />
@@ -54,9 +54,9 @@ export default function AdminPanel() {
       <button onClick={addUser}>הוסף משתמש</button>
 
       <h3>משתמשים רשומים:</h3>
-      <ul className={userListStyles}>
+      <ul className="user-list">
         {users.map((u, i) => (
-          <li key={i} className={userItemStyles}>{u.email} ({u.role})</li>
+          <li key={i} className="user-item">{u.email} ({u.role})</li>
         ))}
       </ul>
     </div>
