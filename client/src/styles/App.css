@@ -36,3 +36,93 @@
     transform: rotate(360deg);
   }
 }
+/* Compare this snippet from client/src/styles/Modal.css: */
+/* .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+} 
+.modal-content {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 400px;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-body {
+  margin-top: 1rem;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.modal-footer button {  
+  margin-left: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-footer button.primary {
+  background-color: #007bff;
+  color: white;
+}
+.modal-footer button.primary:hover {
+  background-color: #0056b3;
+}
+.modal-footer button.secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.modal-footer button.secondary:hover {
+  background-color: #5a6268;
+}
+.modal-footer button.danger {
+  background-color: #dc3545;
+  color: white;
+}
+.modal-footer button.danger:hover {
+  background-color: #c82333;
+}
+.modal-footer button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+.modal-footer button:disabled:hover {
+  background-color: #ccc;
+}
+.modal-footer .spinner {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+} 
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.modal-footer .error {
+  color: #dc3545;
+  margin-top: 0.5rem;
+}
+.modal-footer .success {
+  color: #28a745;
+  margin-top: 0.5rem;

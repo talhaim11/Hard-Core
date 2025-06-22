@@ -5,8 +5,8 @@ import SessionList from '../components/SessionList';
 import WorkoutBoard from '../components/WorkoutBoard';
 import { API_BASE } from '../config';
 import '../styles/AdminPage.css';
-// import '../styles/AdminUserManager.css';
-// import '../styles/SessionList.css';
+import '../styles/AdminUserManager.css';
+import '../styles/SessionList.css';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -44,6 +44,27 @@ const AdminPage = () => {
     </div>
   );
   };
+
+// This is the AdminPage component that checks if the user is logged in and has the correct role.
+// If not, it redirects them to the login page. It also provides a logout button to
+// clear the local storage and redirect to the login page.
+// It includes components for managing users and displaying workout sessions.
+// Make sure to import this component in your main App.js file and set up the route for
+// it. For example, in App.js, you would add:
+// <Route path="/admin" element={<AdminPage />} />
+// This code is a React component for an admin page that checks if the user is logged in
+// and has the correct role. If not, it redirects them to the login page.
+// It also provides a logout button to clear the local storage and redirect to the login page.
+// It includes components for managing users and displaying workout sessions.
+// Make sure to import this component in your main App.js file and set up the route for
+// it. For example, in App.js, you would add:
+// <Route path="/admin" element={<AdminPage />} />
+import AdminUserManager from '../components/AdminUserManager';
+import SessionList from '../components/SessionList';
+import WorkoutBoard from '../components/WorkoutBoard';
+import '../styles/AdminPage.css';
+import '../styles/AdminUserManager.css';
+import '../styles/SessionList.css';
 
   export default AdminPage;
 

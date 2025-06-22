@@ -454,3 +454,6 @@ api.interceptors.response.use(
   }
 );
 
+// export const API_BASE = 'https://hard-core.onrender.com'; // כבר קיים אצלך
+// export default api; // כבר קיים אצלך
+// הוספת פונקציות נוספות לפי הצורך

@@ -73,3 +73,11 @@ function Login({ setRole }) {
 }
 
 export default Login;
+
+// This code defines a simple login page for a React application.
+// It includes input fields for email, password, and an access token.
+// When the user clicks the "Login" button, it sends a POST request to the server with the provided credentials.
+// If the login is successful, it stores the token and role in local storage and navigates
+// the user to either the admin or user page based on their role.
+// If the login fails, it displays an alert with the error message.
+// Make sure to import this component in your main App.js file and set up the route for it.

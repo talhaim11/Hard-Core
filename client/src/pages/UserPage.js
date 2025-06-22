@@ -28,3 +28,16 @@ const UserPage = () => {
 };
 
 export default UserPage;
+
+// This is a simple user page component that checks if the user is logged in and has the correct role.
+// If not, it redirects them to the login page. It also provides a logout button to
+// clear the local storage and redirect to the login page.
+// You can expand this component to include user-specific features or information as needed.
+// Make sure to import this component in your main App.js file and set up the route for it.
+// For example, in App.js, you would add:
+// <Route path="/user" element={<UserPage />} />
+// This code is a React component for a user page that checks if the user is logged in and has the correct role.
+// If not, it redirects them to the login page. It also provides a logout button to
+// clear the local storage and redirect to the login page.
+// You can expand this component to include user-specific features or information as needed.
+// Make sure to import this component in your main App.js file and set up the route for it.
