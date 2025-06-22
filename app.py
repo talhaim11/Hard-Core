@@ -228,7 +228,7 @@ def get_sessions():
             SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
             FROM sessions s
             LEFT JOIN user_sessions us ON s.id = us.session_id
-            GROUP BY s.id, s.date_time
+            GROUP BY s.id, s.data_time
             ORDER BY s.date ASC
         """)
         sessions = [
