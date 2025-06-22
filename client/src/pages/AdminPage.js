@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminUserManager from './AdminUserManager';
+import AdminUserManager from '../components/AdminUserManager';
 import SessionList from './SessionList';
-import WorkoutBoard from './WorkoutBoard';
+import WorkoutBoard from '../components/WorkoutBoard';
 import { API_BASE } from './config';
-import './AdminPage.css';
-import './AdminUserManager.css';
-import './SessionList.css';
+import '../styles/AdminPage.css';
+// import '../styles/AdminUserManager.css';
+// import '../styles/SessionList.css';
 
 const AdminPage = () => {
   const navigate = useNavigate();
