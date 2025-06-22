@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminUserManager from '../components/AdminUserManager';
 import SessionList from '../components/SessionList';
 import WorkoutBoard from '../components/WorkoutBoard';
-import { API_BASE } from '../config';
+// import { API_BASE } from '../config'; // Disabled: unused import
 import '../styles/AdminPage.css';
 
 const AdminPage = () => {

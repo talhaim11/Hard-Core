@@ -2,8 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';
 import App from './App';
-import { BrowserRouter } from 'react-router-dom';
-import { API_BASE } from './config';
+// import { BrowserRouter } from 'react-router-dom'; // Disabled: unused import
+// import { API_BASE } from './config'; // Disabled: unused import
 
 import './styles/App.css'; // Import your global styles here
 import './styles/AdminPage.css';
