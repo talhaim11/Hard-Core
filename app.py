@@ -59,7 +59,14 @@ DB_PATH = 'gym.db'
 def create_tables():
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-        # users table כבר קיימת
+        
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user'
+        )''')
+
         c.execute('''CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date_time TEXT NOT NULL UNIQUE
@@ -71,7 +78,7 @@ def create_tables():
             session_id INTEGER NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id),
             FOREIGN KEY(session_id) REFERENCES sessions(id),
-            UNIQUE(user_id, session_id)  -- מונע רישום כפול לאותו אימון
+            UNIQUE(user_id, session_id)
         )''')
 
         conn.commit()
