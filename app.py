@@ -83,6 +83,10 @@ def create_tables():
             UNIQUE(user_id, session_id)
         )''')
 
+        c.execute('''CREATE TABLE IF NOT EXISTS allowed_tokens (
+            token TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE
+        )''')
         conn.commit()
 
 # --- AUTH HELPERS ---
@@ -141,6 +145,10 @@ def register():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'user')
+    token = data.get('token')
+
+    if not token:
+        return jsonify({'error': 'Missing access token'}), 400
 
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -149,10 +157,17 @@ def register():
             c = conn.cursor()
             c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
                       (email, hashed_pw, role))
+            # Insert token into allowed_tokens
+            c.execute("INSERT INTO allowed_tokens (token, email) VALUES (?, ?)", (token, email))
             conn.commit()
         return jsonify({'message': 'User registered successfully'}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 409
+    except sqlite3.IntegrityError as e:
+        if 'users.email' in str(e):
+            return jsonify({'error': 'Email already exists'}), 409
+        elif 'allowed_tokens.token' in str(e) or 'allowed_tokens.email' in str(e):
+            return jsonify({'error': 'Token or email already used'}), 409
+        else:
+            return jsonify({'error': 'Registration failed', 'details': str(e)}), 400
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -161,19 +176,20 @@ def login():
     password = data.get('password')
     token = data.get('token')
 
-    # בדיקת טוקן קודם כול
-    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
-        return jsonify({'error': 'Invalid token or email'}), 401
-
-    # בדיקת סיסמה מול SQLite
+    # Check token in allowed_tokens table
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
+        c.execute("SELECT email FROM allowed_tokens WHERE token = ?", (token,))
         row = c.fetchone()
+        if not row or row[0] != email:
+            return jsonify({'error': 'Invalid token or email'}), 401
 
-        if row and bcrypt.checkpw(password.encode('utf-8'), row[1].encode('utf-8') if isinstance(row[1], str) else row[1]):
-            token = encode_token(row[0], row[2])
-            return jsonify({'token': token, 'role': row[2]})
+        # Check password in users table
+        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
+        user_row = c.fetchone()
+        if user_row and bcrypt.checkpw(password.encode('utf-8'), user_row[1].encode('utf-8') if isinstance(user_row[1], str) else user_row[1]):
+            token_jwt = encode_token(user_row[0], user_row[2])
+            return jsonify({'token': token_jwt, 'role': user_row[2]})
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
@@ -362,7 +378,11 @@ def debug_token():
 
 @app.route('/debug_allowed_tokens', methods=['GET'])
 def debug_allowed_tokens():
-    return jsonify(ALLOWED_TOKENS)
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("SELECT token, email FROM allowed_tokens")
+        tokens = c.fetchall()
+    return jsonify({token: email for token, email in tokens})
 
 @app.route('/debug_secret_key', methods=['GET'])
 def debug_secret_key():
