@@ -76,8 +76,6 @@ def create_tables():
 
         conn.commit()
 
-create_tables()
-
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
     payload = {
@@ -94,6 +92,38 @@ def decode_token(token):
         return payload
     except jwt.ExpiredSignatureError:
         return None
+
+def add_location_column():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE sessions ADD COLUMN location TEXT DEFAULT NULL")
+            conn.commit()
+            print("✅ Column 'location' added successfully.")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                print("ℹ️ Column 'location' already exists.")
+            else:
+                raise e
+
+def add_title_column():
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT NULL")
+            conn.commit()
+            print("✅ Column 'title' added successfully.")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                print("ℹ️ Column 'title' already exists.")
+            else:
+                raise e
+
+# קריאה לפונקציות 
+create_tables()
+add_location_column()
+add_title_column()
+
 
 # --- ROUTES ---
 @app.route('/register', methods=['POST'])
@@ -202,10 +232,34 @@ def get_sessions():
             ORDER BY s.date ASC
         """)
         sessions = [
-            {'id': row[0], 'date': row[1], 'participants': row[2]}
+            {'id': row[0], 'date_time': row[1], 'participants': row[2]}
             for row in c.fetchall()
         ]
     return jsonify(sessions)
+
+@app.route('/sessions', methods=['POST'])
+@token_required
+def create_session(payload):
+    if payload['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.json
+    title = data.get('title')
+    date_time = data.get('date_time')
+    location = data.get('location', 'Main Gym')  # ברירת מחדל
+
+    if not title or not date_time:
+        return jsonify({'error': 'Missing title or date_time'}), 400
+
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO sessions (title, date_time, location) VALUES (?, ?, ?)",
+                  (title, date_time, location))
+        conn.commit()
+
+    return jsonify({'message': 'Session created successfully'}), 201
+
+
 @app.route('/sessions/<int:session_id>', methods=['GET'])
 def get_session_details(session_id):
     with sqlite3.connect(DB_PATH) as conn:
@@ -230,7 +284,7 @@ def cancel_registration(current_user, session_id):
         c.execute("DELETE FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
         conn.commit()
     return jsonify({'message': 'Registration cancelled successfully'})
-
+ 
 @app.route('/sessions/<int:session_id>', methods=['POST'])
 @token_required
 def register_to_session(current_user, session_id):
@@ -247,6 +301,8 @@ def register_to_session(current_user, session_id):
         conn.commit()
 
     return jsonify({'message': 'Registered successfully'})
+
+
 
 
 if __name__ == "__main__":
