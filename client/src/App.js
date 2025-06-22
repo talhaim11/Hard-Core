@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Login from "./Login";
-import AdminPage from "./AdminPage";
-import UserPage from "./UserPage";
+import Login from "./pages/Login";
+import AdminPage from "./pages/AdminPage";
+import UserPage from "./pages/UserPage";
+// import WorkoutBoard from './components/WorkoutBoard'; // Disabled: unused import
+
+// import { API_BASE } from "./config"; // Disabled: unused import
+import './styles/App.css'; // Import your global styles here
+import './styles/AdminPage.css';
+import './styles/UserPage.css';
+import './styles/WorkoutBoard.css';
+import './styles/Login.css';
+
 
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem("role"));
@@ -15,7 +24,8 @@ function App() {
     }
   }, []);
 
-  return (
+   return ( 
+    
     <Router>
       <Routes>
         <Route path="/" element={<Login setRole={setRole} />} />

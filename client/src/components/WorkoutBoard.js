@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import './WorkoutBoard.css';
+// import '../styles/WorkoutBoard.css'; // Assuming you have a CSS file for styling
 
 const WorkoutBoard = ({ token }) => {
   const [sessions, setSessions] = useState([]);

@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminUserManager from './AdminUserManager';
-import SessionList from './SessionList';
-import WorkoutBoard from './WorkoutBoard';
-import { API_BASE } from './config';
-import './AdminPage.css';
-import './AdminUserManager.css';
-import './SessionList.css';
+import AdminUserManager from '../components/AdminUserManager';
+import SessionList from '../components/SessionList';
+import WorkoutBoard from '../components/WorkoutBoard';
+// import { API_BASE } from '../config'; // Disabled: unused import
+import '../styles/AdminPage.css';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -19,7 +17,7 @@ const AdminPage = () => {
     if (!storedToken || role !== 'admin') {
       navigate('/login');
     } else {
-      setToken(storedToken); // נשמור את הטוקן
+      setToken(storedToken);
     }
   }, [navigate]);
 
@@ -30,9 +28,10 @@ const AdminPage = () => {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div className="admin-page">
       <h1>ברוך הבא, אדמין!</h1>
       <button onClick={handleLogout}>התנתק</button>
+
       <h2>ניהול משתמשים</h2>
       <p>כאן תוכל לנהל את המשתמשים במערכת.</p>    
       <AdminUserManager />
@@ -45,3 +44,4 @@ const AdminPage = () => {
 };
 
 export default AdminPage;
+

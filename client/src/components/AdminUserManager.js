@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import '../styles/AdminUserManager.css';
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -41,7 +42,7 @@ export default function AdminPanel() {
   }, []);
 
   return (
-    <div>
+    <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} /><br />
       <input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} type="password" /><br />
@@ -53,11 +54,27 @@ export default function AdminPanel() {
       <button onClick={addUser}>הוסף משתמש</button>
 
       <h3>משתמשים רשומים:</h3>
-      <ul>
+      <ul className="user-list">
         {users.map((u, i) => (
-          <li key={i}>{u.email} ({u.role})</li>
+          <li key={i} className="user-item">{u.email} ({u.role})</li>
         ))}
       </ul>
     </div>
   );
 }
+
+// This component allows an admin to manage users, including adding new users and viewing the list of registered users.
+// It uses axios to make API calls to the backend for user management.
+// The component maintains state for the list of users, as well as form inputs for adding a new user.
+// The `fetchUsers` function retrieves the list of users from the backend and updates the state.
+// The `addUser` function sends a POST request to add a new user with the provided email, password, token, and role.
+// The component renders a form for adding a new user and displays the list of registered users.
+// Note: Make sure to replace the API endpoint with your actual backend URL if different.
+// Ensure you have axios installed in your project: npm install axios
+// Make sure to handle errors appropriately in a production application.
+// This code is a React component for an admin panel that allows user management.
+// It includes functionality to add new users and display a list of registered users.
+// Ensure you have the necessary backend API endpoints set up to handle user management requests.
+// This code is a React component for an admin panel that allows user management.
+// It includes functionality to add new users and display a list of registered users.
+// Ensure you have the necessary backend API endpoints set up to handle user management requests.
