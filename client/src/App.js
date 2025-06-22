@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/Login";
-import AdminPage from "../pages/AdminPage";
-import UserPage from "../pages/UserPage";
+import AdminPage from "./pages/AdminPage";
+import UserPage from "./pages/UserPage";
 import WorkoutBoard from '../components/WorkoutBoard';
 
 

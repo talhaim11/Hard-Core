@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminUserManager from '../components/AdminUserManager';
-import SessionList from './SessionList';
+import SessionList from '../components/SessionList';
 import WorkoutBoard from '../components/WorkoutBoard';
 import { API_BASE } from './config';
 import '../styles/AdminPage.css';
