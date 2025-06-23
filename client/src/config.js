@@ -1,4 +1,4 @@
-export const API_BASE = "https://hard-core.onrender.com"
+export const API_BASE = "https://gym-backend-staging.onrender.com"
 // export const API_BASE = "http://localhost:5000"; // Uncomment for local development
 // export const API_BASE = "https://your-production-api.com"; // Uncomment for production deployment
 export const SOCKET_BASE = "https://hard-core.onrender.com/socket.io"; // Socket.io endpoint

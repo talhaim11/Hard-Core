@@ -1,61 +1,61 @@
 import axios from 'axios';
-import { API_BASE } from './config';
-
-const BACKEND_URL = API_BASE || "https://gym-backend-staging.onrender.com";
-console.log("API base URL:", BACKEND_URL);
+import { API_BASE } from '../config';
 
 const api = axios.create({
-  baseURL: BACKEND_URL,
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// מוסיף Bearer באופן אוטומטי לפני כל בקשה
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+export const register = async (email, password, token, role) => {
+  const response = await api.post('/register', { email, password, token, role });
+  return response.data;
+};
 
-export default api;
+export const login = async (email, password, token) => {
+  const response = await api.post('/login', { email, password, token });
+  return response.data;
+};
+
 export const fetchUsers = async () => {
-  try {
-    const response = await api.get('/users');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    throw error;
-  }
-};      
-export const addUser = async (email, password, token, role) => {
-  try {
-    const response = await api.post('/users', { email, password, token, role });
-    return response.data;
-  } catch (error) {
-    console.error('Error adding user:', error);
-    throw error;
-  }
+  const response = await api.get('/users');
+  return response.data;
 };
+
 export const fetchSessions = async () => {
-  try {
-    const response = await api.get('/sessions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching sessions:', error);
-    throw error;
-  }
+  const response = await api.get('/sessions');
+  return response.data.sessions; // your backend returns {sessions: [...]}
 };
-export const registerSession = async (sessionId) => {
-  try {
-    const response = await api.post(`/sessions/${sessionId}/register`);
-    return response.data;
-  } catch (error) {
-    console.error('Error registering session:', error);
-    throw error;
+
+export const bookSession = async (date_time, token) => {
+  const response = await api.post('/book-session', { date_time }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getMe = async (token) => {
+  const response = await api.get('/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+api.interceptors.response.use(
+  res => res,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.clear();
+      window.location = '/';
+    }
+    return Promise.reject(err);
   }
+);
+
+// export const API_BASE = 'https://hard-core.onrender.com'; // כבר קיים אצלך
+// export default api; // כבר קיים אצלך
+// הוספת פונקציות נוספות לפי הצורך
 };
 export const cancelSession = async (sessionId) => {
   try {
