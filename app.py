@@ -201,8 +201,15 @@ def login():
         c.execute("SELECT email FROM allowed_tokens WHERE token = ?", (token,))
         row = c.fetchone()
         print(f"DEBUG: allowed_tokens row for token={token}: {row}")  # DEBUG
-        if not row or row[0] != email:
-            print("DEBUG: Invalid token or email")  # DEBUG
+        print(f"DEBUG: login email from request: '{email}'")  # DEBUG
+        if not row:
+            print("DEBUG: Token not found in allowed_tokens")  # DEBUG
+            return jsonify({'error': 'Invalid token or email'}), 401
+
+        db_email = row[0]
+        print(f"DEBUG: email in allowed_tokens: '{db_email}'")  # DEBUG
+        if db_email.strip().lower() != email.strip().lower():
+            print("DEBUG: Email mismatch")  # DEBUG
             return jsonify({'error': 'Invalid token or email'}), 401
 
         # Check password in users table
