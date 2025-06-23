@@ -20,7 +20,8 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
-        const response = await fetch(`${BACKEND_URL}/login`, {
+      console.log("Login payload:", { email, password, token }); // Add this line
+      const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, token }),
