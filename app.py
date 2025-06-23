@@ -199,15 +199,26 @@ def login():
         c = conn.cursor()
         c.execute("SELECT email FROM allowed_tokens WHERE token = ?", (token,))
         row = c.fetchone()
+        print(f"DEBUG: allowed_tokens row for token={token}: {row}")  # DEBUG
         if not row or row[0] != email:
+            print("DEBUG: Invalid token or email")  # DEBUG
             return jsonify({'error': 'Invalid token or email'}), 401
 
         # Check password in users table
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
         user_row = c.fetchone()
-        if user_row and bcrypt.checkpw(password.encode('utf-8'), user_row[1].encode('utf-8') if isinstance(user_row[1], str) else user_row[1]):
-            token_jwt = encode_token(str(user_row[0]), user_row[2])  # Ensure user_id is a string
-            return jsonify({'token': token_jwt, 'role': user_row[2]})
+        print(f"DEBUG: users row for email={email}: {user_row}")  # DEBUG
+        if user_row:
+            db_password = user_row[1]
+            # Ensure db_password is bytes for bcrypt
+            if isinstance(db_password, str):
+                db_password = db_password.encode('utf-8')
+            password_ok = bcrypt.checkpw(password.encode('utf-8'), db_password)
+            print(f"DEBUG: password_ok={password_ok}")  # DEBUG
+            if password_ok:
+                token_jwt = encode_token(str(user_row[0]), user_row[2])  # Ensure user_id is a string
+                return jsonify({'token': token_jwt, 'role': user_row[2]})
+        print("DEBUG: Invalid credentials")  # DEBUG
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
