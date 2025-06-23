@@ -1,8 +1,11 @@
 import axios from 'axios';
-import { API_BASE } from './config';   // כבר קיים אצלך
+import { API_BASE } from './config';
+
+const BACKEND_URL = API_BASE || "https://gym-backend-staging.onrender.com";
+console.log("API base URL:", BACKEND_URL);
 
 const api = axios.create({
-  baseURL: API_BASE,          // https://hard-core.onrender.com
+  baseURL: BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -87,6 +90,15 @@ export const deleteSession = async (sessionId) => {
     return response.data;
   } catch (error) {
     console.error('Error deleting session:', error);
+    throw error;
+  }
+};
+export const register = async (email, password, token, role) => {
+  try {
+    const response = await api.post('/register', { email, password, token, role });
+    return response.data;
+  } catch (error) {
+    console.error('Error registering user:', error);
     throw error;
   }
 };

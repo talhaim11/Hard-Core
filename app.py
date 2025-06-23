@@ -438,6 +438,12 @@ def set_attendance(current_user):
     return jsonify({'message': 'Attendance updated'})
 
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    print("DEBUG: /ping called", file=sys.stderr, flush=True)
+    return jsonify({"message": "pong"})
+
+
 if __name__ == "__main__":
     from os import environ
     app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))
