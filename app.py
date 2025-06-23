@@ -10,6 +10,7 @@ import os
 from functools import wraps
 from flask import request, jsonify
 import jwt
+import sys
 
 
 # --- CONSTANTS ---
@@ -189,7 +190,7 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    print("DEBUG: /login route called")  # Add this line
+    print("DEBUG: /login route called", file=sys.stderr, flush=True)
     data = request.json
     email = data.get('email')
     password = data.get('password')
@@ -200,33 +201,32 @@ def login():
         c = conn.cursor()
         c.execute("SELECT email FROM allowed_tokens WHERE token = ?", (token,))
         row = c.fetchone()
-        print(f"DEBUG: allowed_tokens row for token={token}: {row}")  # DEBUG
-        print(f"DEBUG: login email from request: '{email}'")  # DEBUG
+        print(f"DEBUG: allowed_tokens row for token={token}: {row}", file=sys.stderr, flush=True)
+        print(f"DEBUG: login email from request: '{email}'", file=sys.stderr, flush=True)
         if not row:
-            print("DEBUG: Token not found in allowed_tokens")  # DEBUG
+            print("DEBUG: Token not found in allowed_tokens", file=sys.stderr, flush=True)
             return jsonify({'error': 'Invalid token or email'}), 401
 
         db_email = row[0]
-        print(f"DEBUG: email in allowed_tokens: '{db_email}'")  # DEBUG
+        print(f"DEBUG: email in allowed_tokens: '{db_email}'", file=sys.stderr, flush=True)
         if db_email.strip().lower() != email.strip().lower():
-            print("DEBUG: Email mismatch")  # DEBUG
+            print("DEBUG: Email mismatch", file=sys.stderr, flush=True)
             return jsonify({'error': 'Invalid token or email'}), 401
 
         # Check password in users table
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
         user_row = c.fetchone()
-        print(f"DEBUG: users row for email={email}: {user_row}")  # DEBUG
+        print(f"DEBUG: users row for email={email}: {user_row}", file=sys.stderr, flush=True)
         if user_row:
             db_password = user_row[1]
-            # Ensure db_password is bytes for bcrypt
             if isinstance(db_password, str):
                 db_password = db_password.encode('utf-8')
             password_ok = bcrypt.checkpw(password.encode('utf-8'), db_password)
-            print(f"DEBUG: password_ok={password_ok}")  # DEBUG
+            print(f"DEBUG: password_ok={password_ok}", file=sys.stderr, flush=True)
             if password_ok:
-                token_jwt = encode_token(str(user_row[0]), user_row[2])  # Ensure user_id is a string
+                token_jwt = encode_token(str(user_row[0]), user_row[2])
                 return jsonify({'token': token_jwt, 'role': user_row[2]})
-        print("DEBUG: Invalid credentials")  # DEBUG
+        print("DEBUG: Invalid credentials", file=sys.stderr, flush=True)
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
