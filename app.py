@@ -143,8 +143,15 @@ def login():
     password = data.get('password')
     token = data.get('token')
 
+    print(f"DEBUG: login request email={email}, token={token}, password={password}", file=sys.stderr, flush=True)
+
     allowed = AllowedToken.query.filter_by(token=token).first()
     print(f"DEBUG: allowed_tokens row for token={token}: {allowed}", file=sys.stderr, flush=True)
+    if allowed:
+        print(f"DEBUG: allowed.email={allowed.email}", file=sys.stderr, flush=True)
+    else:
+        print("DEBUG: No allowed_token found for this token", file=sys.stderr, flush=True)
+
     print(f"DEBUG: login email from request: '{email}'", file=sys.stderr, flush=True)
     if not allowed or allowed.email.strip().lower() != email.strip().lower():
         print("DEBUG: Token not found in allowed_tokens or email mismatch", file=sys.stderr, flush=True)
@@ -152,9 +159,15 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     print(f"DEBUG: users row for email={email}: {user}", file=sys.stderr, flush=True)
-    if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        token_jwt = encode_token(str(user.id), user.role)
-        return jsonify({'token': token_jwt, 'role': user.role})
+    if user:
+        print(f"DEBUG: user.password (hashed)={user.password}", file=sys.stderr, flush=True)
+        password_ok = bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
+        print(f"DEBUG: password_ok={password_ok}", file=sys.stderr, flush=True)
+        if password_ok:
+            token_jwt = encode_token(str(user.id), user.role)
+            return jsonify({'token': token_jwt, 'role': user.role})
+    else:
+        print("DEBUG: No user found for this email", file=sys.stderr, flush=True)
     print("DEBUG: Invalid credentials", file=sys.stderr, flush=True)
     return jsonify({'error': 'Invalid credentials'}), 401
 
