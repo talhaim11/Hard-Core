@@ -95,7 +95,7 @@ def encode_token(user_id, role):
     payload = {
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6),
         'iat': datetime.datetime.utcnow(),
-        'sub': str(user_id),
+        'sub': str(user_id),  # Ensure user_id is always a string
         'role': role
     }
     return jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
@@ -206,7 +206,7 @@ def login():
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
         user_row = c.fetchone()
         if user_row and bcrypt.checkpw(password.encode('utf-8'), user_row[1].encode('utf-8') if isinstance(user_row[1], str) else user_row[1]):
-            token_jwt = encode_token(user_row[0], user_row[2])
+            token_jwt = encode_token(str(user_row[0]), user_row[2])  # Ensure user_id is a string
             return jsonify({'token': token_jwt, 'role': user_row[2]})
         return jsonify({'error': 'Invalid credentials'}), 401
 
