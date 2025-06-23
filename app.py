@@ -58,7 +58,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-DB_PATH = 'gym.db'
+DB_PATH = '/data/gym.db'  # Use the persistent disk path on Render
 
 def create_tables():
     with sqlite3.connect(DB_PATH) as conn:
