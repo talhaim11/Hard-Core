@@ -189,6 +189,7 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
+    print("DEBUG: /login route called")  # Add this line
     data = request.json
     email = data.get('email')
     password = data.get('password')
