@@ -11,6 +11,7 @@ from functools import wraps
 from flask import request, jsonify
 import jwt
 import sys
+import shutil
 
 
 # --- CONSTANTS ---
@@ -59,6 +60,11 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 DB_PATH = '/data/gym.db'  # Use the persistent disk path on Render
+
+# Copy gym.db from repo to persistent disk if it doesn't exist
+if not os.path.exists('/data/gym.db') and os.path.exists('gym.db'):
+    print("Copying gym.db to /data/gym.db...", file=sys.stderr, flush=True)
+    shutil.copyfile('gym.db', '/data/gym.db')
 
 def create_tables():
     with sqlite3.connect(DB_PATH) as conn:
