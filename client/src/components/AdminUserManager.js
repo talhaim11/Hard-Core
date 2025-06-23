@@ -22,7 +22,7 @@ export default function AdminPanel() {
 
   const addUser = async () => {
     try {
-      await axios.post("https://hard-core.onrender.com/users", {
+      await axios.post("https://hard-core.onrender.com/register", {
         email,
         password,
         token,
@@ -56,7 +56,27 @@ export default function AdminPanel() {
       <h3>משתמשים רשומים:</h3>
       <ul className="user-list">
         {users.map((u, i) => (
-          <li key={i} className="user-item">{u.email} ({u.role})</li>
+          <li key={i} className="user-item">
+            {u.email} ({u.role})
+            <button
+              className="delete-user-btn"
+              onClick={async () => {
+                if (window.confirm(`Are you sure you want to delete ${u.email}?`)) {
+                  try {
+                    await axios.delete(`https://hard-core.onrender.com/users/${u.id}`, {
+                      headers: { Authorization: localStorage.getItem("token") },
+                    });
+                    fetchUsers();
+                  } catch (err) {
+                    alert("שגיאה במחיקת המשתמש");
+                  }
+                }
+              }}
+              style={{ marginLeft: 8 }}
+            >
+              מחק
+            </button>
+          </li>
         ))}
       </ul>
     </div>

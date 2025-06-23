@@ -28,6 +28,7 @@ function App() {
     
     <Router>
       <Routes>
+        <Route path="/login" element={<Login setRole={setRole} />} />
         <Route path="/" element={<Login setRole={setRole} />} />
 
         <Route

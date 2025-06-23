@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../config";
 
+const BACKEND_URL = API_BASE || "https://gym-backend-staging.onrender.com";
+
 function Login({ setRole }) {
     const [token, setToken] = useState("");
     const [email, setEmail] = useState("");
@@ -18,7 +20,8 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
-        const response = await fetch(`${API_BASE}/login`, {
+      console.log("Login payload:", { email, password, token }); // Add this line
+      const response = await fetch(`${BACKEND_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, token }),
@@ -35,7 +38,7 @@ function Login({ setRole }) {
         setRole(data.role);
         navigate(data.role === "admin" ? "/admin" : "/user");
       } else {
-        alert(data.message || "Login failed");
+        alert(data.error || data.message || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);

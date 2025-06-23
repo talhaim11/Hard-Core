@@ -10,7 +10,8 @@ const SessionList = ({ token }) => {
         const response = await axios.get('/sessions', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSessions(response.data);
+        // The backend returns { sessions: [...] }, so use response.data.sessions
+        setSessions(response.data.sessions || []);
       } catch (error) {
         console.error('Error fetching sessions:', error);
       }
@@ -28,7 +29,7 @@ const SessionList = ({ token }) => {
       const updated = await axios.get('/sessions', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSessions(updated.data);
+      setSessions(updated.data.sessions || []);
     } catch (error) {
       console.error('Error registering:', error);
     }
@@ -43,7 +44,7 @@ const SessionList = ({ token }) => {
       const updated = await axios.get('/sessions', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setSessions(updated.data);
+      setSessions(updated.data.sessions || []);
     } catch (error) {
       console.error('Error cancelling:', error);
     }
@@ -53,7 +54,7 @@ const SessionList = ({ token }) => {
     <div>
       <h2>לוח אימונים</h2>
       <ul>
-        {sessions.map((session) => (
+        {(Array.isArray(sessions) ? sessions : []).map((session) => (
           <li key={session.id}>
             <strong>{new Date(session.date_time).toLocaleDateString()}</strong> –{' '}
             {new Date(session.date_time).toLocaleTimeString()}

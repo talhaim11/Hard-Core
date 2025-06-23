@@ -1,92 +1,104 @@
 import axios from 'axios';
-import { API_BASE } from './config';   // כבר קיים אצלך
+import { API_BASE } from '../config';
 
 const api = axios.create({
-  baseURL: API_BASE,          // https://hard-core.onrender.com
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// מוסיף Bearer באופן אוטומטי לפני כל בקשה
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// --- Auth ---
+export const register = async (email, password, token, role) => {
+  const response = await api.post('/register', { email, password, token, role });
+  return response.data;
+};
 
-export default api;
+export const login = async (email, password, token) => {
+  const response = await api.post('/login', { email, password, token });
+  return response.data;
+};
+
+// --- Users ---
 export const fetchUsers = async () => {
-  try {
-    const response = await api.get('/users');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    throw error;
-  }
-};      
-export const addUser = async (email, password, token, role) => {
-  try {
-    const response = await api.post('/users', { email, password, token, role });
-    return response.data;
-  } catch (error) {
-    console.error('Error adding user:', error);
-    throw error;
-  }
+  const response = await api.get('/users');
+  return response.data;
 };
+
+// --- Sessions ---
 export const fetchSessions = async () => {
-  try {
-    const response = await api.get('/sessions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching sessions:', error);
-    throw error;
+  const response = await api.get('/sessions');
+  return response.data.sessions;
+};
+
+export const bookSession = async (date_time, token) => {
+  const response = await api.post('/book-session', { date_time }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const createSession = async (sessionData, token) => {
+  const response = await api.post('/sessions', sessionData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const cancelSession = async (sessionId, token) => {
+  const response = await api.delete(`/sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getSessionDetails = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}`);
+  return response.data;
+};
+
+// --- Me ---
+export const getMe = async (token) => {
+  const response = await api.get('/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+// --- Attendance ---
+export const getAttendance = async (token) => {
+  const response = await api.get('/attendance', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const setAttendance = async (attendanceData, token) => {
+  const response = await api.post('/attendance', attendanceData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+// --- Interceptor for 401 ---
+api.interceptors.response.use(
+  res => res,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.clear();
+      window.location = '/';
+    }
+    return Promise.reject(err);
+  }
+);
   }
 };
-export const registerSession = async (sessionId) => {
+export const register = async (email, password, token, role) => {
   try {
-    const response = await api.post(`/sessions/${sessionId}/register`);
+    const response = await api.post('/register', { email, password, token, role });
     return response.data;
   } catch (error) {
-    console.error('Error registering session:', error);
-    throw error;
-  }
-};
-export const cancelSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error cancelling session:', error);
-    throw error;
-  }
-};
-export const createSession = async (sessionData) => {
-  try {
-    const response = await api.post('/sessions', sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating session:', error);
-    throw error;
-  }
-};
-export const updateSession = async (sessionId, sessionData) => {
-  try {
-    const response = await api.put(`/sessions/${sessionId}`, sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating session:', error);
-    throw error;
-  }
-};
-export const deleteSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting session:', error);
+    console.error('Error registering user:', error);
     throw error;
   }
 };

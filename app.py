@@ -1,16 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sqlite3
+from flask_sqlalchemy import SQLAlchemy
+import os
 import bcrypt
 import jwt
 import datetime
 from dotenv import load_dotenv
 load_dotenv()
-import os
 from functools import wraps
-from flask import request, jsonify
-import jwt
-
+import sys
 
 # --- CONSTANTS ---
 # טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
@@ -19,7 +17,8 @@ import jwt
 ALLOWED_TOKENS = {
     "abc123": "user1@example.com",
     "admin777": "admin@example.com",
-    "xyz999": "guest@example.com"
+    "xyz999": "guest@example.com",
+    "itay777": "Itayshriker@gmail.com"
 }
 SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
 def token_required(f):
@@ -36,7 +35,7 @@ def token_required(f):
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             current_user = {
               "id": data['sub'],
-              "role": data['role']
+              'role': data['role']  # <-- fixed line
             }
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
@@ -47,43 +46,48 @@ def token_required(f):
 
 
 
-
-
 # --- CONFIGURATION ---
 app = Flask(__name__)
-print("🚀 Flask is starting...")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+db = SQLAlchemy(app)
+print("🚀 Flask is starting...")
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-DB_PATH = 'gym.db'
+# --- MODELS ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String, unique=True, nullable=False)
+    password = db.Column(db.String, nullable=False)
+    role = db.Column(db.String, default='user', nullable=False)
 
-def create_tables():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user'
-        )''')
+class AllowedToken(db.Model):
+    token = db.Column(db.String, primary_key=True)
+    email = db.Column(db.String, unique=True, nullable=False)
 
-        c.execute('''CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date_time TEXT NOT NULL UNIQUE
-        )''')
+class Session(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date_time = db.Column(db.String, unique=True, nullable=False)
+    title = db.Column(db.String)
+    location = db.Column(db.String)
 
-        c.execute('''CREATE TABLE IF NOT EXISTS user_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            session_id INTEGER NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(session_id) REFERENCES sessions(id),
-            UNIQUE(user_id, session_id)
-        )''')
+class UserSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'session_id'),)
 
-        conn.commit()
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.String, nullable=False)
+    hour = db.Column(db.Integer, nullable=False)
+    note = db.Column(db.String)
+    __table_args__ = (db.UniqueConstraint('user_id', 'date', 'hour'),)
+
+with app.app_context():
+    db.create_all()
 
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
@@ -102,38 +106,6 @@ def decode_token(token):
     except jwt.ExpiredSignatureError:
         return None
 
-def add_location_column():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        try:
-            c.execute("ALTER TABLE sessions ADD COLUMN location TEXT DEFAULT NULL")
-            conn.commit()
-            print("✅ Column 'location' added successfully.")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e):
-                print("ℹ️ Column 'location' already exists.")
-            else:
-                raise e
-
-def add_title_column():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        try:
-            c.execute("ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT NULL")
-            conn.commit()
-            print("✅ Column 'title' added successfully.")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e):
-                print("ℹ️ Column 'title' already exists.")
-            else:
-                raise e
-
-# קריאה לפונקציות 
-create_tables()
-add_location_column()
-add_title_column()
-
-
 # --- ROUTES ---
 @app.route('/register', methods=['POST'])
 def register():
@@ -141,48 +113,69 @@ def register():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'user')
+    token = data.get('token')
 
-    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    if not token:
+        return jsonify({'error': 'Missing access token'}), 400
+
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     try:
-        with sqlite3.connect(DB_PATH) as conn:
-            c = conn.cursor()
-            c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
-                      (email, hashed_pw, role))
-            conn.commit()
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'Email already exists'}), 409
+        if AllowedToken.query.filter((AllowedToken.token == token) | (AllowedToken.email == email)).first():
+            return jsonify({'error': 'Token or email already used'}), 409
+
+        user = User(email=email, password=hashed_pw, role=role)
+        allowed_token = AllowedToken(token=token, email=email)
+        db.session.add(user)
+        db.session.add(allowed_token)
+        db.session.commit()
         return jsonify({'message': 'User registered successfully'}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 409
+    except Exception as e:
+        return jsonify({'error': 'Registration failed', 'details': str(e)}), 400
 
 @app.route('/login', methods=['POST'])
 def login():
+    print("DEBUG: /login route called", file=sys.stderr, flush=True)
     data = request.json
     email = data.get('email')
     password = data.get('password')
     token = data.get('token')
 
-    # בדיקת טוקן קודם כול
-    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
+    print(f"DEBUG: login request email={email}, token={token}, password={password}", file=sys.stderr, flush=True)
+
+    allowed = AllowedToken.query.filter_by(token=token).first()
+    print(f"DEBUG: allowed_tokens row for token={token}: {allowed}", file=sys.stderr, flush=True)
+    if allowed:
+        print(f"DEBUG: allowed.email={allowed.email}", file=sys.stderr, flush=True)
+    else:
+        print("DEBUG: No allowed_token found for this token", file=sys.stderr, flush=True)
+
+    print(f"DEBUG: login email from request: '{email}'", file=sys.stderr, flush=True)
+    if not allowed or allowed.email.strip().lower() != email.strip().lower():
+        print("DEBUG: Token not found in allowed_tokens or email mismatch", file=sys.stderr, flush=True)
         return jsonify({'error': 'Invalid token or email'}), 401
 
-    # בדיקת סיסמה מול SQLite
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
-        row = c.fetchone()
-
-        if row and bcrypt.checkpw(password.encode('utf-8'), row[1].encode('utf-8') if isinstance(row[1], str) else row[1]):
-            token = encode_token(row[0], row[2])
-            return jsonify({'token': token, 'role': row[2]})
-        return jsonify({'error': 'Invalid credentials'}), 401
+    user = User.query.filter_by(email=email).first()
+    print(f"DEBUG: users row for email={email}: {user}", file=sys.stderr, flush=True)
+    if user:
+        print(f"DEBUG: user.password (hashed)={user.password}", file=sys.stderr, flush=True)
+        password_ok = bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
+        print(f"DEBUG: password_ok={password_ok}", file=sys.stderr, flush=True)
+        if password_ok:
+            token_jwt = encode_token(str(user.id), user.role)
+            return jsonify({'token': token_jwt, 'role': user.role})
+    else:
+        print("DEBUG: No user found for this email", file=sys.stderr, flush=True)
+    print("DEBUG: Invalid credentials", file=sys.stderr, flush=True)
+    return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
 def get_users():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT id, email, role FROM users")
-        users = [{'id': row[0], 'email': row[1], 'role': row[2]} for row in c.fetchall()]
-    return jsonify(users)
+    with db.session.no_autoflush:
+        users = User.query.all()
+    return jsonify([{'id': user.id, 'email': user.email, 'role': user.role} for user in users])
 
 @app.route('/me', methods=['GET'])
 def me():
@@ -211,40 +204,39 @@ def book_session():
     if not date_time:
         return jsonify({'error': 'Missing date_time'}), 400
 
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-
+    with db.session.no_autoflush:
         # הכנס את האימון אם הוא לא קיים
-        c.execute("INSERT OR IGNORE INTO sessions (date_time) VALUES (?)", (date_time,))
-        conn.commit()
-
-        # קבל את מזהה האימון
-        c.execute("SELECT id FROM sessions WHERE date_time = ?", (date_time,))
-        session_id = c.fetchone()[0]
+        session = Session.query.filter_by(date_time=date_time).first()
+        if not session:
+            session = Session(date_time=date_time)
+            db.session.add(session)
+            db.session.commit()
 
         # נסה לרשום את המשתמש לאימון
-        try:
-            c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (user_id, session_id))
-            conn.commit()
-            return jsonify({'message': 'Session booked successfully'})
-        except sqlite3.IntegrityError:
+        user_session = UserSession.query.filter_by(user_id=user_id, session_id=session.id).first()
+        if user_session:
             return jsonify({'error': 'Already registered for this session'}), 409
+
+        user_session = UserSession(user_id=user_id, session_id=session.id)
+        db.session.add(user_session)
+        db.session.commit()
+
+    return jsonify({'message': 'Session booked successfully'})
+
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("""
-            SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
-            FROM sessions s
-            LEFT JOIN user_sessions us ON s.id = us.session_id
-            GROUP BY s.id, s.date_time
-            ORDER BY s.date_time ASC
-        """)
-        sessions = [
-            {'id': row[0], 'date_time': row[1], 'participants': row[2]}
-            for row in c.fetchall()
-        ]
-    return jsonify({'sessions': sessions})
+    with db.session.no_autoflush:
+        sessions = (
+            db.session.query(Session, db.func.count(UserSession.user_id).label('participant_count'))
+            .outerjoin(UserSession, Session.id == UserSession.session_id)
+            .group_by(Session.id, Session.date_time)
+            .order_by(Session.date_time.asc())
+            .all()
+        )
+    return jsonify([
+        {'id': session[0].id, 'date_time': session[0].date_time, 'participants': session.participant_count}
+        for session in sessions
+    ])
 
 @app.route('/sessions', methods=['POST'])
 @token_required
@@ -260,92 +252,87 @@ def create_session(payload):
     if not title or not date_time:
         return jsonify({'error': 'Missing title or date_time'}), 400
 
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("INSERT INTO sessions (title, date_time, location) VALUES (?, ?, ?)",
-                  (title, date_time, location))
-        conn.commit()
+    session = Session(title=title, date_time=date_time, location=location)
+    db.session.add(session)
+    db.session.commit()
 
     return jsonify({'message': 'Session created successfully'}), 201
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
 def get_session_details(session_id):
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("""
-            SELECT u.id, u.email, u.role
-            FROM users u
-            JOIN user_sessions us ON u.id = us.user_id
-            WHERE us.session_id = ?
-        """, (session_id,))
-        users = [
-            {'id': row[0], 'email': row[1], 'role': row[2]}
-            for row in c.fetchall()
-        ]
-    return jsonify(users)
+    with db.session.no_autoflush:
+        users = (
+            db.session.query(User)
+            .join(UserSession, User.id == UserSession.user_id)
+            .filter(UserSession.session_id == session_id)
+            .all()
+        )
+    return jsonify([{'id': user.id, 'email': user.email, 'role': user.role} for user in users])
 
 @app.route('/sessions/<int:session_id>', methods=['DELETE'])
 @token_required
 def cancel_registration(current_user, session_id):
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("DELETE FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
-        conn.commit()
-    return jsonify({'message': 'Registration cancelled successfully'})
+    with db.session.no_autoflush:
+        user_session = UserSession.query.filter_by(user_id=current_user['id'], session_id=session_id).first()
+        if user_session:
+            db.session.delete(user_session)
+            db.session.commit()
+            return jsonify({'message': 'Registration cancelled successfully'})
+        return jsonify({'error': 'Registration not found'}), 404
  
 @app.route('/sessions/<int:session_id>', methods=['POST'])
 @token_required
 def register_to_session(current_user, session_id):
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-
+    with db.session.no_autoflush:
         # בדיקה אם המשתמש כבר רשום
-        c.execute("SELECT * FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
-        if c.fetchone():
+        user_session = UserSession.query.filter_by(user_id=current_user['id'], session_id=session_id).first()
+        if user_session:
             return jsonify({'message': 'Already registered for this session'}), 200
 
         # רישום חדש
-        c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (current_user['id'], session_id))
-        conn.commit()
+        user_session = UserSession(user_id=current_user['id'], session_id=session_id)
+        db.session.add(user_session)
+        db.session.commit()
 
     return jsonify({'message': 'Registered successfully'})
 
 @app.route('/debug_users', methods=['GET'])
 def debug_users():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT id, email FROM users")
-        users = c.fetchall()
-    return jsonify({'users': users})
+    with db.session.no_autoflush:
+        users = User.query.all()
+    return jsonify({'users': [{'id': user.id, 'email': user.email} for user in users]})
 
 @app.route('/debug_sessions', methods=['GET'])
 def debug_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT id, date_time FROM sessions")
-        sessions = c.fetchall()
-    return jsonify({'sessions': sessions})
+    with db.session.no_autoflush:
+        sessions = Session.query.all()
+    return jsonify({'sessions': [{'id': session.id, 'date_time': session.date_time} for session in sessions]})
 
 @app.route('/debug_user_sessions', methods=['GET'])
 def debug_user_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("""
-            SELECT us.id, u.email, s.date_time
-            FROM user_sessions us
-            JOIN users u ON us.user_id = u.id
-            JOIN sessions s ON us.session_id = s.id
-        """)
-        user_sessions = c.fetchall()
-    return jsonify({'user_sessions': user_sessions})
+    with db.session.no_autoflush:
+        user_sessions = (
+            db.session.query(UserSession, User, Session)
+            .join(User, User.id == UserSession.user_id)
+            .join(Session, Session.id == UserSession.session_id)
+            .all()
+        )
+    return jsonify({
+        'user_sessions': [{
+            'id': us[0].id,
+            'user_email': us[1].email,
+            'session_date_time': us[2].date_time
+        } for us in user_sessions]
+    })
 
 @app.route('/debug', methods=['GET'])
 def debug():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = c.fetchall()
+    with db.session.no_autoflush:
+        # For PostgreSQL, use information_schema to list tables
+        tables = db.session.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+        ).fetchall()
     return jsonify({'tables': [table[0] for table in tables]})
 
 @app.route('/debug_token', methods=['GET'])
@@ -362,7 +349,9 @@ def debug_token():
 
 @app.route('/debug_allowed_tokens', methods=['GET'])
 def debug_allowed_tokens():
-    return jsonify(ALLOWED_TOKENS)
+    with db.session.no_autoflush:
+        tokens = AllowedToken.query.all()
+    return jsonify({token.token: token.email for token in tokens})
 
 @app.route('/debug_secret_key', methods=['GET'])
 def debug_secret_key():
@@ -374,10 +363,6 @@ def debug_env():
     env_vars = {key: value for key, value in os.environ.items() if key.startswith('DEBUG_')}
     return jsonify(env_vars)
 
-@app.route('/debug_db_path', methods=['GET'])
-def debug_db_path():
-    return jsonify({'db_path': DB_PATH})
-
 @app.route('/debug_bcrypt', methods=['GET'])
 def debug_bcrypt():
     test_password = "test123"
@@ -388,6 +373,75 @@ def debug_bcrypt():
         'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
     })
 
+
+
+@app.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with db.session.no_autoflush:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        db.session.delete(user)
+        db.session.commit()
+    return jsonify({'message': 'User deleted successfully'})
+
+@app.route('/attendance', methods=['GET'])
+@token_required
+def get_attendance(current_user):
+    # Get attendance for the next 2 weeks for all users
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=today.weekday()+1)  # Sunday of this week
+    end = start + datetime.timedelta(days=13)  # 2 weeks
+    with db.session.no_autoflush:
+        records = (
+            db.session.query(Attendance, User)
+            .join(User, User.id == Attendance.user_id)
+            .filter(db.func.date(Attendance.date) >= start, db.func.date(Attendance.date) <= end)
+            .all()
+        )
+    # Group by date and hour
+    attendance = {}
+    for record in records:
+        date = record.Attendance.date
+        hour = record.Attendance.hour
+        note = record.Attendance.note
+        email = record.User.email
+        user_id = record.User.id
+        attendance.setdefault(date, {}).setdefault(hour, []).append({
+            'email': email,
+            'user_id': user_id,
+            'note': note
+        })
+    return jsonify({'attendance': attendance, 'start': start.isoformat(), 'end': end.isoformat()})
+
+@app.route('/attendance', methods=['POST'])
+@token_required
+def set_attendance(current_user):
+    data = request.json
+    date = data.get('date')
+    hour = data.get('hour')
+    note = data.get('note', '')
+    user_id = current_user['id']
+    if not date or hour is None:
+        return jsonify({'error': 'Missing date or hour'}), 400
+    with db.session.no_autoflush:
+        attendance_record = Attendance.query.filter_by(user_id=user_id, date=date, hour=hour).first()
+        if attendance_record:
+            attendance_record.note = note
+        else:
+            attendance_record = Attendance(user_id=user_id, date=date, hour=hour, note=note)
+            db.session.add(attendance_record)
+        db.session.commit()
+    return jsonify({'message': 'Attendance updated'})
+
+
+@app.route('/ping', methods=['GET'])
+def ping():
+    print("DEBUG: /ping called", file=sys.stderr, flush=True)
+    return jsonify({"message": "pong"})
 
 
 if __name__ == "__main__":
