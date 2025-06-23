@@ -8,6 +8,7 @@ const api = axios.create({
   },
 });
 
+// --- Auth ---
 export const register = async (email, password, token, role) => {
   const response = await api.post('/register', { email, password, token, role });
   return response.data;
@@ -18,14 +19,16 @@ export const login = async (email, password, token) => {
   return response.data;
 };
 
+// --- Users ---
 export const fetchUsers = async () => {
   const response = await api.get('/users');
   return response.data;
 };
 
+// --- Sessions ---
 export const fetchSessions = async () => {
   const response = await api.get('/sessions');
-  return response.data.sessions; // your backend returns {sessions: [...]}
+  return response.data.sessions;
 };
 
 export const bookSession = async (date_time, token) => {
@@ -35,6 +38,26 @@ export const bookSession = async (date_time, token) => {
   return response.data;
 };
 
+export const createSession = async (sessionData, token) => {
+  const response = await api.post('/sessions', sessionData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const cancelSession = async (sessionId, token) => {
+  const response = await api.delete(`/sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getSessionDetails = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}`);
+  return response.data;
+};
+
+// --- Me ---
 export const getMe = async (token) => {
   const response = await api.get('/me', {
     headers: { Authorization: `Bearer ${token}` }
@@ -42,6 +65,22 @@ export const getMe = async (token) => {
   return response.data;
 };
 
+// --- Attendance ---
+export const getAttendance = async (token) => {
+  const response = await api.get('/attendance', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const setAttendance = async (attendanceData, token) => {
+  const response = await api.post('/attendance', attendanceData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+// --- Interceptor for 401 ---
 api.interceptors.response.use(
   res => res,
   err => {
@@ -52,45 +91,6 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-
-// export const API_BASE = 'https://hard-core.onrender.com'; // כבר קיים אצלך
-// export default api; // כבר קיים אצלך
-// הוספת פונקציות נוספות לפי הצורך
-};
-export const cancelSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error cancelling session:', error);
-    throw error;
-  }
-};
-export const createSession = async (sessionData) => {
-  try {
-    const response = await api.post('/sessions', sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating session:', error);
-    throw error;
-  }
-};
-export const updateSession = async (sessionId, sessionData) => {
-  try {
-    const response = await api.put(`/sessions/${sessionId}`, sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating session:', error);
-    throw error;
-  }
-};
-export const deleteSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting session:', error);
-    throw error;
   }
 };
 export const register = async (email, password, token, role) => {
