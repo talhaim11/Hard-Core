@@ -7,4 +7,6 @@ services:
     envVars:
       - key: SECRET_KEY
         value: your-secret-key-here
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_lIAkyD8Ldn4U@ep-ancient-term-a6p32xv9-pooler.us-west-2.aws.neon.tech/neondb?sslmode=require
     autoDeploy: true
