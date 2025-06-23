@@ -6,45 +6,38 @@ import bcrypt
 import jwt
 import datetime
 from dotenv import load_dotenv
-load_dotenv()
 from functools import wraps
 import sys
 
+load_dotenv()
+
 # --- CONSTANTS ---
-# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
-# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
-# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
 ALLOWED_TOKENS = {
     "abc123": "user1@example.com",
     "admin777": "admin@example.com",
     "xyz999": "guest@example.com",
     "itay777": "Itayshriker@gmail.com"
 }
-SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
+SECRET_KEY = "your_secret_key_here"
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
-
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
-
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             current_user = {
               "id": data['sub'],
-              "role": data['role']
+              "role': data['role']
             }
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
-
         return f(current_user, *args, **kwargs)
     return decorated
-
-
-
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
