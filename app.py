@@ -510,6 +510,25 @@ def get_achievements(current_user):
         {'id': 2, 'label': 'רצף 5 ימים', 'achieved': False}
     ]})
 
+@app.route('/user/sessions', methods=['GET'])
+@token_required
+def get_user_sessions(current_user):
+    user_id = current_user['id']
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT s.id, s.date_time, s.title, s.location
+            FROM session s
+            JOIN user_session us ON s.id = us.session_id
+            WHERE us.user_id = %s
+            ORDER BY s.date_time ASC
+        ''', (user_id,))
+        sessions = [
+            {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3]}
+            for row in c.fetchall()
+        ]
+    return jsonify({'sessions': sessions})
+
 if __name__ == "__main__":
     from os import environ
     print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")
