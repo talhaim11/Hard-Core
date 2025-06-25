@@ -103,6 +103,19 @@ def add_title_column():
             else:
                 raise e
 
+def add_name_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('ALTER TABLE "user" ADD COLUMN name TEXT DEFAULT NULL')
+            conn.commit()
+            print("✅ Column 'name' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e) or "already exists" in str(e):
+                print("ℹ️ Column 'name' already exists.")
+            else:
+                raise e
+
 def create_tables():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
@@ -137,6 +150,7 @@ def create_tables():
 # create_tables()
 # add_location_column()
 # add_title_column()
+# add_name_column()
 
 
 # --- ROUTES ---
@@ -471,11 +485,11 @@ def user_profile(current_user):
     if request.method == 'GET':
         with psycopg2.connect(POSTGRES_URL) as conn:
             c = conn.cursor()
-            c.execute('SELECT email, role FROM "user" WHERE id = %s', (user_id,))
+            c.execute('SELECT email, role, name FROM "user" WHERE id = %s', (user_id,))
             row = c.fetchone()
             if not row:
                 return jsonify({'error': 'User not found'}), 404
-            return jsonify({'email': row[0], 'role': row[1], 'name': ''})  # Add name if you have it
+            return jsonify({'email': row[0], 'role': row[1], 'name': row[2] or ''})
     elif request.method == 'PUT':
         data = request.json
         email = data.get('email')
@@ -488,7 +502,8 @@ def user_profile(current_user):
             if password:
                 hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
                 c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_id))
-            # If you have a name column, update it here
+            if name is not None:
+                c.execute('UPDATE "user" SET name = %s WHERE id = %s', (name, user_id))
             conn.commit()
         return jsonify({'message': 'Profile updated'})
 
@@ -528,6 +543,11 @@ def get_user_sessions(current_user):
             for row in c.fetchall()
         ]
     return jsonify({'sessions': sessions})
+
+@app.route('/sessions/<int:session_id>/register', methods=['POST'])
+@token_required
+def register_to_session_register(current_user, session_id):
+    return register_to_session(current_user, session_id)
 
 if __name__ == "__main__":
     from os import environ
