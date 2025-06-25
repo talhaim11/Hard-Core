@@ -8,6 +8,7 @@ export default function AdminPanel() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [role, setRole] = useState('user');
+  const [search, setSearch] = useState('');
 
   const fetchUsers = async () => {
     try {
@@ -41,6 +42,12 @@ export default function AdminPanel() {
     fetchUsers();
   }, []);
 
+  // Filter users by search
+  const filteredUsers = users.filter(u =>
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    (u.role && u.role.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
     <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
@@ -53,9 +60,17 @@ export default function AdminPanel() {
       </select><br />
       <button onClick={addUser}>הוסף משתמש</button>
 
-      <h3>משתמשים רשומים:</h3>
-      <ul className="user-list">
-        {users.map((u, i) => (
+      <h3 className="user-list-label">משתמשים רשומים:</h3>
+      <input
+        type="text"
+        className="user-search"
+        placeholder="חפש משתמש..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{marginBottom: '0.5rem', width: '90%'}}
+      />
+      <ul className="user-list scrollable-user-list">
+        {filteredUsers.map((u, i) => (
           <li key={i} className="user-item">{u.email} ({u.role})</li>
         ))}
       </ul>

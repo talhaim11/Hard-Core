@@ -95,6 +95,13 @@ body, html {
   margin-top: 20px;
   width: 300px;
 }
+.admin-page .user-list-label {
+  color: #222;
+  font-weight: 600;
+  margin-top: 1.2rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
 .admin-page .user-list ul {
   list-style-type: none;
   padding: 0;
@@ -104,6 +111,14 @@ body, html {
   justify-content: space-between;
   padding: 10px;
   border-bottom: 1px solid #ccc;
+  color: #222;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px #0001;
+  padding: 10px 16px;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
 }
 .admin-page .user-list li button {
   background-color: #dc3545;
@@ -213,6 +228,23 @@ input:focus, select:focus {
 
 button {
   font-family: inherit;
+}
+
+.scrollable-user-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.user-search {
+  background: #fff;
+  color: #222;
+  border: 1px solid #bbb;
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  width: 90%;
+  display: block;
 }
 
 @media (max-width: 600px) {
