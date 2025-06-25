@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/Login";
 import AdminPage from "./pages/AdminPage";
 import UserPage from "./pages/UserPage";
+import Register from "./pages/Register"; // Import Register page
+
 // import WorkoutBoard from './components/WorkoutBoard'; // Disabled: unused import
 
 // import { API_BASE } from "./config"; // Disabled: unused import
@@ -29,7 +31,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login setRole={setRole} />} />
-
+        <Route path="/register" element={<Register />} /> {/* Register route added */}
         <Route
           path="/admin"
           element={
