@@ -402,6 +402,21 @@ def debug_bcrypt():
         'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
     })
 
+@app.route('/sessions/<int:session_id>/users', methods=['GET'])
+def get_session_users(session_id):
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT u.id, u.email, u.role
+            FROM "user" u
+            JOIN user_sessions us ON u.id = us.user_id
+            WHERE us.session_id = %s
+        ''', (session_id,))
+        users = [
+            {'id': row[0], 'email': row[1], 'role': row[2]}
+            for row in c.fetchall()
+        ]
+    return jsonify({'users': users})
 
 
 
