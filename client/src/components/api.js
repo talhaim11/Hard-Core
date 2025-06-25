@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE } from './config';   // כבר קיים אצלך
+import { API_BASE } from '../config';   // כבר קיים אצלך
 
 const api = axios.create({
   baseURL: API_BASE,          // https://hard-core.onrender.com
