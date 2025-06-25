@@ -1,10 +1,10 @@
-export const API_BASE = "https://hard-core.onrender.com"
+export const API_BASE = "https://gym-backend-staging.onrender.com"
 // export const API_BASE = "http://localhost:5000"; // Uncomment for local development
 // export const API_BASE = "https://your-production-api.com"; // Uncomment for production deployment
-export const SOCKET_BASE = "https://hard-core.onrender.com/socket.io"; // Socket.io endpoint
+export const SOCKET_BASE = "https://gym-backend-staging.onrender.com/socket.io"; // Socket.io endpoint
 // export const SOCKET_BASE = "http://localhost:5000/socket.io"; // Uncomment for local development
 // export const SOCKET_BASE = "https://your-production-socket-api.com"; // Uncomment for production deployment
-export const WS_BASE = "wss://hard-core.onrender.com/socket.io/?EIO=4&transport=websocket"; // WebSocket endpoint
+export const WS_BASE = "wss://gym-backend-staging.onrender.com/socket.io/?EIO=4&transport=websocket"; // WebSocket endpoint
 // export const WS_BASE = "ws://localhost:5000/socket.io/?EIO=4&transport=websocket"; // Uncomment for local development
 // export const WS_BASE = "wss://your-production-websocket-api.com/socket.io/?EIO=4&transport=websocket"; // Uncomment for production deployment
 export const AUTH_TOKEN = localStorage.getItem("token") || ""; // Get the auth token from local storage
