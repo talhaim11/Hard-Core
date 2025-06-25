@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
-import './UserDashboard.css';
+import '../styles/UserDashboard.css';
 
 const UserDashboard = () => {
   const [sessions, setSessions] = useState([]);
