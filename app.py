@@ -141,6 +141,11 @@ def register():
     email = data.get('email')
     password = data.get('password')
     role = data.get('role', 'user')
+    token = data.get('token')
+
+    # Require and check access token for registration
+    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
+        return jsonify({'error': 'Invalid token or email'}), 401
 
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
@@ -150,7 +155,7 @@ def register():
             c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
                       (email, hashed_pw, role))
             conn.commit()
-        return jsonify({'message': 'User registered successfully'}), 201
+        return jsonify({'message': 'User registered successfully', 'success': True}), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Email already exists'}), 409
 
@@ -159,13 +164,8 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    token = data.get('token')
 
-    # בדיקת טוקן קודם כול
-    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
-        return jsonify({'error': 'Invalid token or email'}), 401
-
-    # בדיקת סיסמה מול SQLite
+    # Only check email and password for login
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
