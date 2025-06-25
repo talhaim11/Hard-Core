@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminUserManager from '../components/AdminUserManager';
 import WorkoutBoard from '../components/WorkoutBoard';
 import SessionTable from '../components/SessionTable';
+import Notification from '../components/Notification';
 import '../styles/AdminPage.css';
 
 const weightliftingSVG = (
@@ -19,6 +20,7 @@ const weightliftingSVG = (
 const AdminPage = () => {
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
+  const [notification, setNotification] = useState({ message: '', type: 'info' });
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -37,8 +39,14 @@ const AdminPage = () => {
     navigate('/');
   };
 
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: 'info' }), 4000);
+  };
+
   return (
     <div className="admin-page">
+      <Notification message={notification.message} type={notification.type} onClose={() => setNotification({ message: '', type: 'info' })} />
       <div className="admin-content-card">
         {weightliftingSVG}
         <h1>ברוך הבא, אדמין!</h1>
@@ -49,7 +57,7 @@ const AdminPage = () => {
         </div>
         <div className="admin-section">
           <h2>טבלת מפגשים</h2>
-          {token && <SessionTable token={token} />}
+          {token && <SessionTable token={token} showNotification={showNotification} />}
         </div>
         <div className="admin-section">
           <h2>לוח האימונים</h2>

@@ -421,6 +421,39 @@ def get_session_users(session_id):
 
 
 
+@app.route('/sessions/<int:session_id>', methods=['PUT'])
+@token_required
+def update_session(current_user, session_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    title = data.get('title')
+    date_time = data.get('date_time')
+    location = data.get('location')
+    if not title or not date_time:
+        return jsonify({'error': 'Missing title or date_time'}), 400
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute("UPDATE session SET title = %s, date_time = %s, location = %s WHERE id = %s",
+                  (title, date_time, location, session_id))
+        conn.commit()
+    return jsonify({'message': 'Session updated successfully'})
+
+@app.route('/sessions/<int:session_id>', methods=['DELETE'])
+@token_required
+def delete_session(current_user, session_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('DELETE FROM user_session WHERE session_id = %s', (session_id,))
+        c.execute('DELETE FROM session WHERE id = %s', (session_id,))
+        conn.commit()
+    return jsonify({'message': 'Session deleted successfully'})
+
+
+
+
 if __name__ == "__main__":
     from os import environ
     print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")
