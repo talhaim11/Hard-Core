@@ -165,15 +165,23 @@ def login():
     email = data.get('email')
     password = data.get('password')
 
+    print(f"[LOGIN] Received email: {email}")
+    print(f"[LOGIN] Received password: {password}")
+
     # Only check email and password for login
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
         row = c.fetchone()
 
-        if row and bcrypt.checkpw(password.encode('utf-8'), row[1].encode('utf-8') if isinstance(row[1], str) else row[1]):
-            token = encode_token(row[0], row[2])
-            return jsonify({'token': token, 'role': row[2]})
+        if row:
+            db_hash = row[1]
+            print(f"[LOGIN] DB hash: {db_hash}")
+            check_result = bcrypt.checkpw(password.encode('utf-8'), db_hash.encode('utf-8') if isinstance(db_hash, str) else db_hash)
+            print(f"[LOGIN] bcrypt.checkpw result: {check_result}")
+            if check_result:
+                token = encode_token(row[0], row[2])
+                return jsonify({'token': token, 'role': row[2]})
         return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
