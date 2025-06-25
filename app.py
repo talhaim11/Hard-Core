@@ -80,7 +80,7 @@ def add_location_column():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         try:
-            c.execute("ALTER TABLE sessions ADD COLUMN location TEXT DEFAULT NULL")
+            c.execute("ALTER TABLE session ADD COLUMN location TEXT DEFAULT NULL")
             conn.commit()
             print("✅ Column 'location' added successfully.")
         except psycopg2.Error as e:
@@ -93,7 +93,7 @@ def add_title_column():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         try:
-            c.execute("ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT NULL")
+            c.execute("ALTER TABLE session ADD COLUMN title TEXT DEFAULT NULL")
             conn.commit()
             print("✅ Column 'title' added successfully.")
         except psycopg2.Error as e:
@@ -114,7 +114,7 @@ def create_tables():
             );
         ''')
         c.execute('''
-            CREATE TABLE IF NOT EXISTS sessions (
+            CREATE TABLE IF NOT EXISTS session (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
                 date_time TIMESTAMP NOT NULL UNIQUE,
@@ -122,10 +122,10 @@ def create_tables():
             );
         ''')
         c.execute('''
-            CREATE TABLE IF NOT EXISTS user_sessions (
+            CREATE TABLE IF NOT EXISTS user_session (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
-                session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
+                session_id INTEGER REFERENCES session(id) ON DELETE CASCADE,
                 UNIQUE(user_id, session_id)
             );
         ''')
@@ -228,16 +228,16 @@ def book_session():
         c = conn.cursor()
 
         # הכנס את האימון אם הוא לא קיים
-        c.execute("INSERT INTO sessions (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
+        c.execute("INSERT INTO session (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
         conn.commit()
 
         # קבל את מזהה האימון
-        c.execute("SELECT id FROM sessions WHERE date_time = %s", (date_time,))
+        c.execute("SELECT id FROM session WHERE date_time = %s", (date_time,))
         session_id = c.fetchone()[0]
 
         # נסה לרשום את המשתמש לאימון
         try:
-            c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
+            c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
             conn.commit()
             return jsonify({'message': 'Session booked successfully'})
         except psycopg2.IntegrityError:
@@ -248,8 +248,8 @@ def get_sessions():
         c = conn.cursor()
         c.execute("""
             SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
-            FROM sessions s
-            LEFT JOIN user_sessions us ON s.id = us.session_id
+            FROM session s
+            LEFT JOIN user_session us ON s.id = us.session_id
             GROUP BY s.id, s.date_time
             ORDER BY s.date_time ASC
         """)
@@ -275,7 +275,7 @@ def create_session(payload):
 
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("INSERT INTO sessions (title, date_time, location) VALUES (%s, %s, %s)",
+        c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s)",
                   (title, date_time, location))
         conn.commit()
 
@@ -289,7 +289,7 @@ def get_session_details(session_id):
         c.execute("""
             SELECT u.id, u.email, u.role
             FROM users u
-            JOIN user_sessions us ON u.id = us.user_id
+            JOIN user_session us ON u.id = us.user_id
             WHERE us.session_id = %s
         """, (session_id,))
         users = [
@@ -303,7 +303,7 @@ def get_session_details(session_id):
 def cancel_registration(current_user, session_id):
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("DELETE FROM user_sessions WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
+        c.execute("DELETE FROM user_session WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
         conn.commit()
     return jsonify({'message': 'Registration cancelled successfully'})
  
@@ -314,12 +314,12 @@ def register_to_session(current_user, session_id):
         c = conn.cursor()
 
         # בדיקה אם המשתמש כבר רשום
-        c.execute("SELECT * FROM user_sessions WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
+        c.execute("SELECT * FROM user_session WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
         if c.fetchone():
             return jsonify({'message': 'Already registered for this session'}), 200
 
         # רישום חדש
-        c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (%s, %s)", (current_user['id'], session_id))
+        c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (current_user['id'], session_id))
         conn.commit()
 
     return jsonify({'message': 'Registered successfully'})
@@ -409,7 +409,7 @@ def get_session_users(session_id):
         c.execute('''
             SELECT u.id, u.email, u.role
             FROM "user" u
-            JOIN user_sessions us ON u.id = us.user_id
+            JOIN user_session us ON u.id = us.user_id
             WHERE us.session_id = %s
         ''', (session_id,))
         users = [
