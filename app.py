@@ -52,10 +52,10 @@ def token_required(f):
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
+
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 POSTGRES_URL = os.getenv('POSTGRES_URL')
 
