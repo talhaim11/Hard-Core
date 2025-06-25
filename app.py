@@ -102,6 +102,36 @@ def add_title_column():
             else:
                 raise e
 
+def create_tables():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS "user" (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
+            );
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                date_time TIMESTAMP NOT NULL UNIQUE,
+                location TEXT
+            );
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS user_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
+                session_id INTEGER REFERENCES sessions(id) ON DELETE CASCADE,
+                UNIQUE(user_id, session_id)
+            );
+        ''')
+        conn.commit()
+        print("✅ Tables ensured.")
+
 # קריאה לפונקציות 
 # create_tables()
 # add_location_column()
@@ -381,6 +411,7 @@ if __name__ == "__main__":
     print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")
     # Try connecting to the database and print any errors
     try:
+        create_tables()
         with psycopg2.connect(POSTGRES_URL) as conn:
             print("[STARTUP] Successfully connected to Postgres!")
     except Exception as e:
