@@ -56,3 +56,20 @@
 .cancel-btn:hover {
   background: #b82b39;
 }
+
+.workout-board ul {
+  list-style: none;
+  padding: 0;
+}
+.session-item {
+  background: #232a3a;
+  color: #fff;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 2px 8px rgba(30,144,255,0.08);
+  font-size: 1.05rem;
+}
+.session-item strong {
+  color: #fff;
+}
