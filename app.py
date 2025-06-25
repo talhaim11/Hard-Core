@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
 import psycopg2
 import bcrypt
 import jwt
@@ -52,7 +53,7 @@ def token_required(f):
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=["https://gym-frontend-staging.netlify.app"])
 
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
@@ -463,8 +464,51 @@ def delete_user(current_user, user_id):
         conn.commit()
     return jsonify({'message': 'User deleted successfully'})
 
+@app.route('/profile', methods=['GET', 'PUT'])
+@token_required
+def user_profile(current_user):
+    user_id = current_user['id']
+    if request.method == 'GET':
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute('SELECT email, role FROM "user" WHERE id = %s', (user_id,))
+            row = c.fetchone()
+            if not row:
+                return jsonify({'error': 'User not found'}), 404
+            return jsonify({'email': row[0], 'role': row[1], 'name': ''})  # Add name if you have it
+    elif request.method == 'PUT':
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            if email:
+                c.execute('UPDATE "user" SET email = %s WHERE id = %s', (email, user_id))
+            if password:
+                hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_id))
+            # If you have a name column, update it here
+            conn.commit()
+        return jsonify({'message': 'Profile updated'})
 
+@app.route('/notifications', methods=['GET'])
+@token_required
+def get_notifications(current_user):
+    # Example: return static notifications, replace with DB logic as needed
+    return jsonify({'notifications': [
+        {'id': 1, 'message': 'אימון חדש נוסף למערכת!', 'date': '2025-06-24'},
+        {'id': 2, 'message': 'זכית בתג "נוכחות 10"!', 'date': '2025-06-20'}
+    ]})
 
+@app.route('/achievements', methods=['GET'])
+@token_required
+def get_achievements(current_user):
+    # Example: return static achievements, replace with DB logic as needed
+    return jsonify({'achievements': [
+        {'id': 1, 'label': '10 אימונים', 'achieved': True},
+        {'id': 2, 'label': 'רצף 5 ימים', 'achieved': False}
+    ]})
 
 if __name__ == "__main__":
     from os import environ
