@@ -143,15 +143,6 @@ export const fetchUserSessions = async () => {
   }
 };
 
-export const registerForSession = async (sessionId) => {
-  try {
-    const response = await api.post(`/user/sessions/${sessionId}/register`);
-    return response.data;
-  } catch (error) {
-    console.error('Error registering for session:', error);
-    throw error;
-  }
-};
 export const cancelUserSession = async (sessionId) => {
   try {
     const response = await api.delete(`/user/sessions/${sessionId}`);
