@@ -442,6 +442,15 @@ export const deleteAdminResource = async (resourceId) => {
     throw error;
   }
 };
+export const deleteUser = async (userId) => {
+  try {
+    const response = await api.delete(`/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};
 
 api.interceptors.response.use(
   res => res,

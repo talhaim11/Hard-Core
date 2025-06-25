@@ -451,6 +451,18 @@ def delete_session(current_user, session_id):
         conn.commit()
     return jsonify({'message': 'Session deleted successfully'})
 
+@app.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+        c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+        conn.commit()
+    return jsonify({'message': 'User deleted successfully'})
+
 
 
 

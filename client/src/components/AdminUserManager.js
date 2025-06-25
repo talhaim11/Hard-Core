@@ -38,6 +38,19 @@ export default function AdminPanel() {
     }
   };
 
+  const deleteUserHandler = async (userId) => {
+    if (!window.confirm('Delete this user?')) return;
+    try {
+      await axios.delete(`https://hard-core.onrender.com/users/${userId}`, {
+        headers: { Authorization: localStorage.getItem("token") },
+      });
+      alert('User deleted!');
+      fetchUsers();
+    } catch (err) {
+      alert('Failed to delete user');
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -71,7 +84,10 @@ export default function AdminPanel() {
       />
       <ul className="user-list scrollable-user-list">
         {filteredUsers.map((u, i) => (
-          <li key={i} className="user-item">{u.email} ({u.role})</li>
+          <li key={i} className="user-item">
+            {u.email} ({u.role})
+            <button className="delete-user-btn" onClick={() => deleteUserHandler(u.id)}>🗑️</button>
+          </li>
         ))}
       </ul>
     </div>

@@ -100,7 +100,7 @@ const SessionTable = ({ token, showNotification }) => {
         </thead>
         <tbody>
           {sessions.map(session => (
-            <tr key={session.id}>
+            <tr key={session.id} className="session-row">
               <td>{session.date_time ? new Date(session.date_time).toLocaleDateString() : ''}</td>
               <td>{session.date_time ? new Date(session.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</td>
               <td>{session.title}</td>

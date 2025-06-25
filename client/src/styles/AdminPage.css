@@ -246,6 +246,10 @@ button {
   width: 90%;
   display: block;
 }
+.session-row {
+  background: #232a3a;
+  color: #fff;
+}
 
 @media (max-width: 600px) {
   .admin-content-card {
