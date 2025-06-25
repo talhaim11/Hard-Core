@@ -8,38 +8,51 @@ const WorkoutBoard = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const fetchSessions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_BASE}/sessions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSessions(response.data.sessions || []);
+    } catch (error) {
+      setError('Error fetching sessions');
+      setSessions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/sessions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setSessions(response.data.sessions || []);
-      } catch (error) {
-        setError('Error fetching sessions');
-        setSessions([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSessions();
+    // eslint-disable-next-line
   }, [token]);
 
   if (loading) return <div>Loading sessions...</div>;
-  if (error) return <div>{error}</div>;
+  if (error) return (
+    <div>
+      {error}
+      <button onClick={fetchSessions} style={{ marginLeft: '10px' }}>Retry</button>
+    </div>
+  );
 
   return (
     <div className="workout-board">
       <h2>לוח אימונים</h2>
-      <ul>
-        {(sessions || []).map((session) => (
-          <li key={session.id} className="session-item">
-            <div><strong>{session.date_time || session.date || ''}</strong></div>
-            <div>שם אימון: {session.title || ''}</div>
-            <div>מספר נרשמים: {session.participants}</div>
-          </li>
-        ))}
-      </ul>
+      {sessions.length === 0 ? (
+        <div>No sessions available.</div>
+      ) : (
+        <ul>
+          {sessions.map((session) => (
+            <li key={session.id} className="session-item">
+              <div><strong>{session.date_time || session.date || ''}</strong></div>
+              <div>שם אימון: {session.title || ''}</div>
+              <div>מספר נרשמים: {session.participants}</div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

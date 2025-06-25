@@ -3,6 +3,8 @@ import axios from 'axios';
 
 const SessionList = ({ token }) => {
   const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -10,9 +12,16 @@ const SessionList = ({ token }) => {
         const response = await axios.get('/sessions', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSessions(response.data);
+        // Accept both array and object with .sessions
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data.sessions || [];
+        setSessions(data);
       } catch (error) {
-        console.error('Error fetching sessions:', error);
+        setError('Error fetching sessions');
+        setSessions([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -52,11 +61,13 @@ const SessionList = ({ token }) => {
   return (
     <div>
       <h2>לוח אימונים</h2>
+      {loading && <div>Loading sessions...</div>}
+      {error && <div>{error}</div>}
       <ul>
-        {sessions.map((session) => (
+        {(sessions || []).map((session) => (
           <li key={session.id}>
-            <strong>{new Date(session.date_time).toLocaleDateString()}</strong> –{' '}
-            {new Date(session.date_time).toLocaleTimeString()}
+            <strong>{session.date_time ? new Date(session.date_time).toLocaleDateString() : ''}</strong> –{' '}
+            {session.date_time ? new Date(session.date_time).toLocaleTimeString() : ''}
             <br />
             אימון: {session.title}
             <br />
