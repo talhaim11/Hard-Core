@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sqlite3
+import psycopg2
 import bcrypt
 import jwt
 import datetime
@@ -56,34 +56,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
-DB_PATH = 'gym.db'
-
-def create_tables():
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user'
-        )''')
-
-        c.execute('''CREATE TABLE IF NOT EXISTS sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date_time TEXT NOT NULL UNIQUE
-        )''')
-
-        c.execute('''CREATE TABLE IF NOT EXISTS user_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            session_id INTEGER NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(session_id) REFERENCES sessions(id),
-            UNIQUE(user_id, session_id)
-        )''')
-
-        conn.commit()
+POSTGRES_URL = os.getenv('POSTGRES_URL')
 
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
@@ -103,35 +76,35 @@ def decode_token(token):
         return None
 
 def add_location_column():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         try:
             c.execute("ALTER TABLE sessions ADD COLUMN location TEXT DEFAULT NULL")
             conn.commit()
             print("✅ Column 'location' added successfully.")
-        except sqlite3.OperationalError as e:
+        except psycopg2.Error as e:
             if "duplicate column name" in str(e):
                 print("ℹ️ Column 'location' already exists.")
             else:
                 raise e
 
 def add_title_column():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         try:
             c.execute("ALTER TABLE sessions ADD COLUMN title TEXT DEFAULT NULL")
             conn.commit()
             print("✅ Column 'title' added successfully.")
-        except sqlite3.OperationalError as e:
+        except psycopg2.Error as e:
             if "duplicate column name" in str(e):
                 print("ℹ️ Column 'title' already exists.")
             else:
                 raise e
 
 # קריאה לפונקציות 
-create_tables()
-add_location_column()
-add_title_column()
+# create_tables()
+# add_location_column()
+# add_title_column()
 
 
 # --- ROUTES ---
@@ -150,14 +123,16 @@ def register():
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
     try:
-        with sqlite3.connect(DB_PATH) as conn:
+        with psycopg2.connect(POSTGRES_URL) as conn:
             c = conn.cursor()
-            c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
-                      (email, hashed_pw, role))
+            c.execute('INSERT INTO "user" (email, password, role) VALUES (%s, %s, %s)',
+                      (email, hashed_pw.decode('utf-8'), role))
             conn.commit()
         return jsonify({'message': 'User registered successfully', 'success': True}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 409
+    except Exception as e:
+        if 'unique constraint' in str(e).lower():
+            return jsonify({'error': 'Email already exists'}), 409
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -168,10 +143,9 @@ def login():
     print(f"[LOGIN] Received email: {email}")
     print(f"[LOGIN] Received password: {password}")
 
-    # Only check email and password for login
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
+        c.execute('SELECT id, password, role FROM "user" WHERE email = %s', (email,))
         row = c.fetchone()
 
         if row:
@@ -186,9 +160,9 @@ def login():
 
 @app.route('/users', methods=['GET'])
 def get_users():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("SELECT id, email, role FROM users")
+        c.execute('SELECT id, email, role FROM "user"')
         users = [{'id': row[0], 'email': row[1], 'role': row[2]} for row in c.fetchall()]
     return jsonify(users)
 
@@ -219,27 +193,27 @@ def book_session():
     if not date_time:
         return jsonify({'error': 'Missing date_time'}), 400
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
 
         # הכנס את האימון אם הוא לא קיים
-        c.execute("INSERT OR IGNORE INTO sessions (date_time) VALUES (?)", (date_time,))
+        c.execute("INSERT INTO sessions (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
         conn.commit()
 
         # קבל את מזהה האימון
-        c.execute("SELECT id FROM sessions WHERE date_time = ?", (date_time,))
+        c.execute("SELECT id FROM sessions WHERE date_time = %s", (date_time,))
         session_id = c.fetchone()[0]
 
         # נסה לרשום את המשתמש לאימון
         try:
-            c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (user_id, session_id))
+            c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
             conn.commit()
             return jsonify({'message': 'Session booked successfully'})
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             return jsonify({'error': 'Already registered for this session'}), 409
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute("""
             SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
@@ -268,9 +242,9 @@ def create_session(payload):
     if not title or not date_time:
         return jsonify({'error': 'Missing title or date_time'}), 400
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("INSERT INTO sessions (title, date_time, location) VALUES (?, ?, ?)",
+        c.execute("INSERT INTO sessions (title, date_time, location) VALUES (%s, %s, %s)",
                   (title, date_time, location))
         conn.commit()
 
@@ -279,13 +253,13 @@ def create_session(payload):
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
 def get_session_details(session_id):
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute("""
             SELECT u.id, u.email, u.role
             FROM users u
             JOIN user_sessions us ON u.id = us.user_id
-            WHERE us.session_id = ?
+            WHERE us.session_id = %s
         """, (session_id,))
         users = [
             {'id': row[0], 'email': row[1], 'role': row[2]}
@@ -296,32 +270,32 @@ def get_session_details(session_id):
 @app.route('/sessions/<int:session_id>', methods=['DELETE'])
 @token_required
 def cancel_registration(current_user, session_id):
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("DELETE FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
+        c.execute("DELETE FROM user_sessions WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
         conn.commit()
     return jsonify({'message': 'Registration cancelled successfully'})
  
 @app.route('/sessions/<int:session_id>', methods=['POST'])
 @token_required
 def register_to_session(current_user, session_id):
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
 
         # בדיקה אם המשתמש כבר רשום
-        c.execute("SELECT * FROM user_sessions WHERE user_id = ? AND session_id = ?", (current_user['id'], session_id))
+        c.execute("SELECT * FROM user_sessions WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
         if c.fetchone():
             return jsonify({'message': 'Already registered for this session'}), 200
 
         # רישום חדש
-        c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (?, ?)", (current_user['id'], session_id))
+        c.execute("INSERT INTO user_sessions (user_id, session_id) VALUES (%s, %s)", (current_user['id'], session_id))
         conn.commit()
 
     return jsonify({'message': 'Registered successfully'})
 
 @app.route('/debug_users', methods=['GET'])
 def debug_users():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute("SELECT id, email FROM users")
         users = c.fetchall()
@@ -329,7 +303,7 @@ def debug_users():
 
 @app.route('/debug_sessions', methods=['GET'])
 def debug_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute("SELECT id, date_time FROM sessions")
         sessions = c.fetchall()
@@ -337,7 +311,7 @@ def debug_sessions():
 
 @app.route('/debug_user_sessions', methods=['GET'])
 def debug_user_sessions():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute("""
             SELECT us.id, u.email, s.date_time
@@ -350,9 +324,9 @@ def debug_user_sessions():
 
 @app.route('/debug', methods=['GET'])
 def debug():
-    with sqlite3.connect(DB_PATH) as conn:
+    with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        c.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
         tables = c.fetchall()
     return jsonify({'tables': [table[0] for table in tables]})
 
@@ -384,7 +358,7 @@ def debug_env():
 
 @app.route('/debug_db_path', methods=['GET'])
 def debug_db_path():
-    return jsonify({'db_path': DB_PATH})
+    return jsonify({'postgres_url': POSTGRES_URL})
 
 @app.route('/debug_bcrypt', methods=['GET'])
 def debug_bcrypt():
