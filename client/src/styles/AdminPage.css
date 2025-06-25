@@ -1,15 +1,69 @@
 /* עיצוב לדף האדמין */
+body, html {
+  background: #111 !important;
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
 .admin-page {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  justify-content: center;
+  background: #111;
+  color: #fff;
+  padding: 0;
+}
+
+.admin-content-card {
+  background: rgba(24, 24, 24, 0.98);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  padding: 2.5rem 2.5rem 2rem 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.admin-logo {
+  width: 90px;
+  height: 90px;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 12px #1e90ff88);
 }
 
 .admin-page h1 {
-  font-size: 2em;
-  margin-bottom: 20px;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: 1px;
+  color: #fff;
+  text-align: center;
 }
+
+.admin-section {
+  background: #181818;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(30,144,255,0.08);
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1.2rem;
+  width: 100%;
+  color: #fff;
+}
+
+.admin-section h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #1e90ff;
+  font-weight: 600;
+}
+
 .admin-page form {
   display: flex;
   flex-direction: column;
@@ -114,25 +168,22 @@
   background: #f0f8ff;
 }
 .logout-btn {
-  background: #1e90ff;
+  background: linear-gradient(90deg, #1e90ff 60%, #00c6fb 100%);
   color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 8px 18px;
-  font-size: 1rem;
+  border-radius: 6px;
+  padding: 10px 28px;
+  font-size: 1.1rem;
+  font-weight: 600;
   cursor: pointer;
   margin-bottom: 1.5rem;
-  transition: background 0.18s;
+  margin-top: 0.5rem;
+  transition: background 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 8px #1e90ff33;
 }
 .logout-btn:hover {
-  background: #1275d2;
-}
-.admin-section {
-  margin-bottom: 2.5rem;
-  padding: 1.5rem;
-  background: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  background: linear-gradient(90deg, #1275d2 60%, #00a6d6 100%);
+  box-shadow: 0 4px 16px #1e90ff55;
 }
 .no-sessions {
   text-align: center;
@@ -145,6 +196,33 @@
   font-size: 1rem;
   text-align: center;
   margin-top: 1rem;
+}
+
+input, select {
+  background: #222;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+input:focus, select:focus {
+  outline: 2px solid #1e90ff;
+}
+
+button {
+  font-family: inherit;
+}
+
+@media (max-width: 600px) {
+  .admin-content-card {
+    padding: 1rem;
+    max-width: 98vw;
+  }
+  .admin-section, .session-table-container {
+    padding: 0.7rem 0.5rem;
+  }
 }
 
 
