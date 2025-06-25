@@ -83,6 +83,69 @@
 .admin-page .user-list li span.status.active {
   color: #28a745;
 }
+.session-table-container {
+  margin: 2rem auto;
+  max-width: 700px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  padding: 1.5rem 2rem;
+}
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  background: #fff;
+}
+.session-table th, .session-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+}
+.session-table th {
+  background: #f5f7fa;
+  color: #333;
+  font-weight: 600;
+}
+.session-table tr:last-child td {
+  border-bottom: none;
+}
+.session-table tr:hover {
+  background: #f0f8ff;
+}
+.logout-btn {
+  background: #1e90ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  transition: background 0.18s;
+}
+.logout-btn:hover {
+  background: #1275d2;
+}
+.admin-section {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.no-sessions {
+  text-align: center;
+  font-size: 1rem;
+  color: #777;
+  margin-top: 2rem;
+}
+.error-msg {
+  color: #dc3545;
+  font-size: 1rem;
+  text-align: center;
+  margin-top: 1rem;
+}
 
 
 

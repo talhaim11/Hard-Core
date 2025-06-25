@@ -16,7 +16,7 @@ const UserPage = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    navigate('/login');
+    navigate('/'); // Redirect to root instead of /login
   };
 
   return (
