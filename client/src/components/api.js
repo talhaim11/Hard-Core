@@ -109,22 +109,20 @@ export const logout = async () => {
   }
 };
 export const getUserProfile = async () => {
-  try {
-    const response = await api.get('/profile');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    throw error;
-  }
+  const response = await api.get('/profile');
+  return response.data;
 };
 export const updateUserProfile = async (profileData) => {
-  try {
-    const response = await api.put('/profile', profileData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    throw error;
-  }
+  const response = await api.put('/profile', profileData);
+  return response.data;
+};
+export const fetchUserNotifications = async () => {
+  const response = await api.get('/notifications');
+  return response.data.notifications;
+};
+export const fetchUserAchievements = async () => {
+  const response = await api.get('/achievements');
+  return response.data.achievements;
 };
 export const deleteUserProfile = async () => {
   try {

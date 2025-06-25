@@ -13,6 +13,7 @@ import './styles/AdminPage.css';
 import './styles/UserPage.css';
 import './styles/WorkoutBoard.css';
 import './styles/Login.css';
+import './styles/UserDashboard.css'; // Import UserDashboard styles
 
 
 function App() {
