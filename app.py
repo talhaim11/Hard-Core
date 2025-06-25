@@ -288,7 +288,7 @@ def get_session_details(session_id):
         c = conn.cursor()
         c.execute("""
             SELECT u.id, u.email, u.role
-            FROM users u
+            FROM "user" u
             JOIN user_session us ON u.id = us.user_id
             WHERE us.session_id = %s
         """, (session_id,))
@@ -303,7 +303,7 @@ def get_session_details(session_id):
 def cancel_registration(current_user, session_id):
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("DELETE FROM user_session WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
+        c.execute('DELETE FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
         conn.commit()
     return jsonify({'message': 'Registration cancelled successfully'})
  
@@ -314,12 +314,12 @@ def register_to_session(current_user, session_id):
         c = conn.cursor()
 
         # בדיקה אם המשתמש כבר רשום
-        c.execute("SELECT * FROM user_session WHERE user_id = %s AND session_id = %s", (current_user['id'], session_id))
+        c.execute('SELECT * FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
         if c.fetchone():
             return jsonify({'message': 'Already registered for this session'}), 200
 
         # רישום חדש
-        c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (current_user['id'], session_id))
+        c.execute('INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)', (current_user['id'], session_id))
         conn.commit()
 
     return jsonify({'message': 'Registered successfully'})
@@ -328,7 +328,7 @@ def register_to_session(current_user, session_id):
 def debug_users():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("SELECT id, email FROM users")
+        c.execute('SELECT id, email FROM "user"')
         users = c.fetchall()
     return jsonify({'users': users})
 
@@ -336,7 +336,7 @@ def debug_users():
 def debug_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("SELECT id, date_time FROM sessions")
+        c.execute('SELECT id, date_time FROM session')
         sessions = c.fetchall()
     return jsonify({'sessions': sessions})
 
