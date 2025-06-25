@@ -367,11 +367,21 @@ def debug_bcrypt():
     return jsonify({
         'test_password': test_password,
         'hashed_password': hashed.decode('utf-8'),
+
         'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
     })
 
 
 
+
+
 if __name__ == "__main__":
     from os import environ
+    print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")
+    # Try connecting to the database and print any errors
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            print("[STARTUP] Successfully connected to Postgres!")
+    except Exception as e:
+        print(f"[STARTUP] Failed to connect to Postgres: {e}")
     app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))
