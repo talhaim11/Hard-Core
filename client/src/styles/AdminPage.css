@@ -251,8 +251,8 @@ button {
   color: #fff;
 }
 .session-row:hover {
-  background: #1e293b;
-  color: #fff;
+  background: #042a68;
+  color: #040820;
 }
 
 @media (max-width: 600px) {
