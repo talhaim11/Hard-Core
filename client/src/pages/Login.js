@@ -44,30 +44,38 @@ function Login({ setRole }) {
   };
 
     return ( 
-    <div>
-        <h2>Login</h2>
-        <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        />
-        <br />
-        <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        />
-        <br />
-        <input
-        type="text"
-        placeholder="Access Token"
-        value={token}
-        onChange={e => setToken(e.target.value)}
-        />
-        <br />
+    <div className="login-page">
+      <div className="login-card">
+        <h1>Login</h1>
+        <label>
+          Email
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </label>
+        <label>
+          Access Token
+          <input
+            type="text"
+            placeholder="Access Token"
+            value={token}
+            onChange={e => setToken(e.target.value)}
+          />
+        </label>
         <button onClick={handleLogin}>Login</button>
+      </div>
     </div>
     );
 }
