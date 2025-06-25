@@ -250,6 +250,10 @@ button {
   background: #232a3a;
   color: #fff;
 }
+.session-row:hover {
+  background: #1e293b;
+  color: #fff;
+}
 
 @media (max-width: 600px) {
   .admin-content-card {

@@ -246,15 +246,15 @@ def book_session():
 def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("""
-            SELECT s.id, s.date_time, COUNT(us.user_id) as participant_count
+        c.execute('''
+            SELECT s.id, s.date_time, s.title, s.location, COUNT(us.user_id) as participant_count
             FROM session s
             LEFT JOIN user_session us ON s.id = us.session_id
-            GROUP BY s.id, s.date_time
+            GROUP BY s.id, s.date_time, s.title, s.location
             ORDER BY s.date_time ASC
-        """)
+        ''')
         sessions = [
-            {'id': row[0], 'date_time': row[1], 'participants': row[2]}
+            {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3], 'participants': row[4]}
             for row in c.fetchall()
         ]
     return jsonify({'sessions': sessions})
