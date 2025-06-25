@@ -4,6 +4,7 @@ import AdminUserManager from '../components/AdminUserManager';
 import WorkoutBoard from '../components/WorkoutBoard';
 import SessionTable from '../components/SessionTable';
 import Notification from '../components/Notification';
+import AdminStats from '../components/AdminStats';
 import '../styles/AdminPage.css';
 
 const weightliftingSVG = (
@@ -51,6 +52,10 @@ const AdminPage = () => {
         {weightliftingSVG}
         <h1>ברוך הבא, אדמין!</h1>
         <button className="logout-btn" onClick={handleLogout}>התנתק</button>
+        <div className="admin-section">
+          <h2>סטטיסטיקות</h2>
+          <AdminStats />
+        </div>
         <div className="admin-section">
           <h2>ניהול משתמשים</h2>
           <AdminUserManager />
