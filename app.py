@@ -288,19 +288,39 @@ def create_session(payload):
 
     data = request.json
     title = data.get('title')
-    date_time = data.get('date_time')
-    location = data.get('location', 'Main Gym')  # ברירת מחדל
+    location = data.get('location', 'Main Gym')
+    dates = data.get('dates')  # New: array of ISO datetimes
+    date_time = data.get('date_time')  # Old: single ISO datetime
 
-    if not title or not date_time:
-        return jsonify({'error': 'Missing title or date_time'}), 400
+    if not title or (not date_time and not dates):
+        return jsonify({'error': 'Missing title or date(s)'}), 400
 
+    created = []
+    skipped = []
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s)",
-                  (title, date_time, location))
-        conn.commit()
-
-    return jsonify({'message': 'Session created successfully'}), 201
+        if dates:
+            for dt in dates:
+                try:
+                    c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s) ON CONFLICT (date_time) DO NOTHING RETURNING id", (title, dt, location))
+                    res = c.fetchone()
+                    if res:
+                        created.append(dt)
+                    else:
+                        skipped.append(dt)
+                except Exception as e:
+                    skipped.append(dt)
+            conn.commit()
+            return jsonify({'message': f'{len(created)} sessions created, {len(skipped)} skipped (duplicates?)', 'created': created, 'skipped': skipped}), 201
+        else:
+            try:
+                c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s)", (title, date_time, location))
+                conn.commit()
+                return jsonify({'message': 'Session created successfully'}), 201
+            except Exception as e:
+                if 'unique constraint' in str(e).lower():
+                    return jsonify({'error': 'Session already exists'}), 409
+                return jsonify({'error': str(e)}), 500
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
