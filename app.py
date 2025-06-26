@@ -13,45 +13,6 @@ from flask import request, jsonify
 import jwt
 
 
-# --- CONSTANTS ---
-# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
-# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
-# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
-ALLOWED_TOKENS = {
-    "abc123": "user1@example.com",
-    "admin777": "admin@example.com",
-    "xyz999": "guest@example.com",
-    "root777": "root@example.com",
-    "tal777": "taltaltal"
-}
-SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
-
-        if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
-
-        try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-            current_user = {
-              "id": data['sub'],
-              "role": data['role']
-            }
-        except Exception as e:
-            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
-
-        return f(current_user, *args, **kwargs)
-    return decorated
-
-
-
-
-
-
 # --- CONFIGURATION ---
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=[
@@ -153,11 +114,28 @@ def create_tables():
         conn.commit()
         print("✅ Tables ensured.")
 
+def create_invite_token_table():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS invite_token (
+                id SERIAL PRIMARY KEY,
+                token TEXT UNIQUE NOT NULL,
+                email TEXT,
+                role TEXT NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        conn.commit()
+        print("✅ Table 'invite_token' ensured.")
+
 # קריאה לפונקציות 
 # create_tables()
 # add_location_column()
 # add_title_column()
 # add_name_column()
+create_invite_token_table()
 
 
 # --- ROUTES ---
@@ -169,23 +147,30 @@ def register():
     role = data.get('role', 'user')
     token = data.get('token')
 
-    # Require and check access token for registration
-    if token not in ALLOWED_TOKENS or ALLOWED_TOKENS[token] != email:
-        return jsonify({'error': 'Invalid token or email'}), 401
+    # Require and check invite token for registration
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, used, email, role FROM invite_token WHERE token = %s', (token,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'Invalid invite token'}), 401
+        if row[1]:
+            return jsonify({'error': 'Invite token already used'}), 401
+        if row[2] and row[2] != email:
+            return jsonify({'error': 'Token is for a different email'}), 401
+        if row[3] and row[3] != role:
+            return jsonify({'error': 'Token is for a different role'}), 401
 
-    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
-    try:
-        with psycopg2.connect(POSTGRES_URL) as conn:
-            c = conn.cursor()
-            c.execute('INSERT INTO "user" (email, password, role) VALUES (%s, %s, %s)',
-                      (email, hashed_pw.decode('utf-8'), role))
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        try:
+            c.execute('INSERT INTO "user" (email, password, role) VALUES (%s, %s, %s)', (email, hashed_pw.decode('utf-8'), role))
+            c.execute('UPDATE invite_token SET used = TRUE WHERE id = %s', (row[0],))
             conn.commit()
-        return jsonify({'message': 'User registered successfully', 'success': True}), 201
-    except Exception as e:
-        if 'unique constraint' in str(e).lower():
-            return jsonify({'error': 'Email already exists'}), 409
-        return jsonify({'error': str(e)}), 500
+            return jsonify({'message': 'User registered successfully', 'success': True}), 201
+        except Exception as e:
+            if 'unique constraint' in str(e).lower():
+                return jsonify({'error': 'Email already exists'}), 409
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -432,15 +417,6 @@ def debug_token():
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
 
-@app.route('/debug_allowed_tokens', methods=['GET'])
-def debug_allowed_tokens():
-    return jsonify(ALLOWED_TOKENS)
-
-@app.route('/debug_secret_key', methods=['GET'])
-def debug_secret_key():
-    return jsonify({'secret_key': app.config['SECRET_KEY']})
-
-
 @app.route('/debug_env', methods=['GET'])
 def debug_env():
     env_vars = {key: value for key, value in os.environ.items() if key.startswith('DEBUG_')}
@@ -592,6 +568,58 @@ def get_user_sessions(current_user):
 @token_required
 def register_to_session_register(current_user, session_id):
     return _handle_session_registration(current_user, session_id)
+
+@app.route('/invite-tokens', methods=['POST'])
+@token_required
+def create_invite_token(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    import secrets
+    token = data.get('token') or secrets.token_urlsafe(8)
+    email = data.get('email')
+    role = data.get('role', 'user')
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('INSERT INTO invite_token (token, email, role) VALUES (%s, %s, %s)', (token, email, role))
+            conn.commit()
+            return jsonify({'token': token, 'email': email, 'role': role}), 201
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/invite-tokens', methods=['GET'])
+@token_required
+def list_invite_tokens(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, token, email, role, used, created_at FROM invite_token ORDER BY created_at DESC')
+        tokens = [
+            {'id': row[0], 'token': row[1], 'email': row[2], 'role': row[3], 'used': row[4], 'created_at': row[5].isoformat()}
+            for row in c.fetchall()
+        ]
+    return jsonify({'tokens': tokens})
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[-1]
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = {
+              "id": data['sub'],
+              "role": data['role']
+            }
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
+        return f(current_user, *args, **kwargs)
+    return decorated
 
 if __name__ == "__main__":
     from os import environ
