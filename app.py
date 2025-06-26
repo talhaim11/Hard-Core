@@ -27,6 +27,24 @@ print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 POSTGRES_URL = os.getenv('POSTGRES_URL')
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[-1]
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = {
+              "id": data['sub'],
+              "role": data['role']
+            }
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
+        return f(current_user, *args, **kwargs)
+    return decorated
 
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
@@ -602,24 +620,7 @@ def list_invite_tokens(current_user):
         ]
     return jsonify({'tokens': tokens})
 
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[-1]
-        if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = {
-              "id": data['sub'],
-              "role": data['role']
-            }
-        except Exception as e:
-            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
-        return f(current_user, *args, **kwargs)
-    return decorated
+
 
 if __name__ == "__main__":
     from os import environ
