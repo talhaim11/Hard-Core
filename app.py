@@ -325,19 +325,37 @@ def cancel_registration(current_user, session_id):
 @app.route('/sessions/<int:session_id>', methods=['POST'])
 @token_required
 def register_to_session(current_user, session_id):
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-
-        # בדיקה אם המשתמש כבר רשום
-        c.execute('SELECT * FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
-        if c.fetchone():
-            return jsonify({'message': 'Already registered for this session'}), 200
-
-        # רישום חדש
-        c.execute('INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)', (current_user['id'], session_id))
-        conn.commit()
-
-    return jsonify({'message': 'Registered successfully'})
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            print(f"[DEBUG] Attempting to register user_id={current_user['id']} to session_id={session_id}")
+            # Check if user exists
+            c.execute('SELECT id FROM "user" WHERE id = %s', (current_user['id'],))
+            user_row = c.fetchone()
+            print(f"[DEBUG] User exists: {user_row}")
+            if not user_row:
+                return jsonify({'error': 'User does not exist'}), 404
+            # Check if session exists
+            c.execute('SELECT id FROM session WHERE id = %s', (session_id,))
+            session_row = c.fetchone()
+            print(f"[DEBUG] Session exists: {session_row}")
+            if not session_row:
+                return jsonify({'error': 'Session does not exist'}), 404
+            # Check if already registered
+            c.execute('SELECT * FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
+            if c.fetchone():
+                print("[DEBUG] User already registered for this session")
+                return jsonify({'message': 'Already registered for this session'}), 200
+            # Register
+            c.execute('INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)', (current_user['id'], session_id))
+            conn.commit()
+            print("[DEBUG] Registration successful")
+        return jsonify({'message': 'Registered successfully'})
+    except Exception as e:
+        import traceback
+        print('[ERROR] Exception in register_to_session:', e)
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/debug_users', methods=['GET'])
 def debug_users():
