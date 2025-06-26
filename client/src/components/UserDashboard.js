@@ -110,7 +110,7 @@ const UserDashboard = () => {
 
   return (
     <div className="user-dashboard">
-      <h2>הדשבורד שלי</h2>
+      <h2 style={{textAlign:'center', marginBottom:'2rem'}}>הדשבורד שלי</h2>
       {/* Notifications */}
       {notifications.length > 0 && (
         <div className="notifications-box">
@@ -139,54 +139,60 @@ const UserDashboard = () => {
           <button onClick={() => setEditMode(false)} style={{marginLeft:8}}>ביטול</button>
         </div>
       )}
-      <h3>הסטטיסטיקות שלי</h3>
-      <div className="stats-box">
-        <div>סה"כ מפגשים שנכחת: {sessions.length}</div>
-        <div>רצף נוכחות מקסימלי: {maxStreak}</div>
+      <div className="stats-section">
+        <h3>הסטטיסטיקות שלי</h3>
+        <div className="stats-box">
+          <div>סה"כ מפגשים שנכחת: {sessions.length}</div>
+          <div>רצף נוכחות מקסימלי: {maxStreak}</div>
+        </div>
       </div>
       {/* Achievements */}
-      <h3>הישגים</h3>
-      <ul className="achievements-list">
-        {achievements.map(a => (
-          <li key={a.id} style={{color: a.achieved ? 'green' : '#aaa'}}>
-            {a.label} {a.achieved ? '🏅' : ''}
-          </li>
-        ))}
-      </ul>
-      <h3>המפגשים שלי</h3>
-      {sessions.length === 0 ? (
-        <div>אין מפגשים רשומים</div>
-      ) : (
-        <ul>
-          {sessions.map(s => (
-            <li key={s.id}>
-              {s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''}
-              <button onClick={() => handleCancel(s.id)} style={{marginRight:8}}>בטל הרשמה</button>
+      <div className="attendance-section">
+        <h3>הישגים</h3>
+        <ul className="achievements-list">
+          {achievements.map(a => (
+            <li key={a.id} style={{color: a.achieved ? 'green' : '#aaa'}}>
+              {a.label} {a.achieved ? '🏅' : ''}
             </li>
           ))}
         </ul>
-      )}
-      <h3>הרשמה למפגשים</h3>
-      <input
-        type="text"
-        placeholder="חפש לפי שם אימון..."
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-        style={{marginBottom:8}}
-      />
-      <ul>
-        {filteredSessions.map(s => (
-          <li key={s.id}>
-            {s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''} | משתתפים: {s.participants}
-            {sessions.some(us => us.id === s.id) ? (
-              <span style={{color:'green',marginRight:8}}>נרשמת</span>
-            ) : (
-              <button onClick={() => handleRegister(s.id)}>הירשם</button>
-            )}
-          </li>
-        ))}
-      </ul>
-      {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
+      </div>
+      <div className="sessions-section">
+        <h3>המפגשים שלי</h3>
+        {sessions.length === 0 ? (
+          <div>אין מפגשים רשומים</div>
+        ) : (
+          <ul className="sessions-list">
+            {sessions.map(s => (
+              <li key={s.id}>
+                <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''}</span>
+                <button onClick={() => handleCancel(s.id)}>בטל הרשמה</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <h3 style={{marginTop:'2rem'}}>הרשמה למפגשים</h3>
+        <input
+          type="text"
+          placeholder="חפש לפי שם אימון..."
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          style={{marginBottom:8}}
+        />
+        <ul className="register-list">
+          {filteredSessions.map(s => (
+            <li key={s.id}>
+              <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''} | משתתפים: {s.participants}</span>
+              {sessions.some(us => us.id === s.id) ? (
+                <span style={{color:'green',marginRight:8}}>נרשמת</span>
+              ) : (
+                <button onClick={() => handleRegister(s.id)}>הירשם</button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
+      </div>
       {/* TODO: Add responsive UI, tooltips, onboarding hints */}
     </div>
   );
