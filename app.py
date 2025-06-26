@@ -328,11 +328,6 @@ def cancel_registration(current_user, session_id):
         conn.commit()
     return jsonify({'message': 'Registration cancelled successfully'})
  
-@app.route('/sessions/<int:session_id>', methods=['POST'])
-@token_required
-def register_to_session(current_user, session_id):
-    return _handle_session_registration(current_user, session_id)
-
 # --- Helper for session registration ---
 def _handle_session_registration(current_user, session_id):
     try:
