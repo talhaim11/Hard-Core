@@ -327,11 +327,6 @@ def cancel_registration(current_user, session_id):
 def register_to_session(current_user, session_id):
     return _handle_session_registration(current_user, session_id)
 
-@app.route('/sessions/<int:session_id>/register', methods=['POST'])
-@token_required
-def register_to_session_register(current_user, session_id):
-    return _handle_session_registration(current_user, session_id)
-
 # --- Helper for session registration ---
 def _handle_session_registration(current_user, session_id):
     try:
