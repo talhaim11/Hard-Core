@@ -4,10 +4,42 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(30,144,255,0.10);
-  padding: 2.5rem 2rem;
+  padding: 2.5rem 2rem 5.5rem 2rem; /* extra bottom padding for logout btn */
   font-family: inherit;
   direction: rtl;
   text-align: right;
+  position: relative;
+}
+
+.welcome-message {
+  text-align: center;
+  font-size: 2.1rem;
+  font-weight: bold;
+  color: #1976d2;
+  margin-bottom: 1.2rem;
+  letter-spacing: 1px;
+}
+
+.logout-btn {
+  width: 90%;
+  max-width: 400px;
+  display: block;
+  margin: 0 auto;
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+  background: #e53935;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 0.9rem 0;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(229,57,53,0.08);
+  transition: background 0.2s;
+}
+.logout-btn:hover {
+  background: #b71c1c;
 }
 
 .profile-box, .profile-edit-box {

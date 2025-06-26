@@ -108,8 +108,15 @@ const UserDashboard = () => {
 
   if (loading) return <div>טוען נתונים...</div>;
 
+  const handleLogout = () => {
+    // Remove token/localStorage and reload or redirect
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  };
+
   return (
     <div className="user-dashboard">
+      <div className="welcome-message">ברוך הבא!</div>
       <h2 style={{textAlign:'center', marginBottom:'2rem'}}>הדשבורד שלי</h2>
       {/* Notifications */}
       {notifications.length > 0 && (
@@ -193,7 +200,8 @@ const UserDashboard = () => {
         </ul>
         {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
       </div>
-      {/* TODO: Add responsive UI, tooltips, onboarding hints */}
+      {/* Logout button at the bottom */}
+      <button className="logout-btn" onClick={handleLogout}>התנתק</button>
     </div>
   );
 };
