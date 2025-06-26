@@ -57,7 +57,7 @@ const apiDelete = async (url) => {
 
 // --- API EXPORTS (DRY) ---
 export const fetchUsers = () => apiGet('/users');
-export const addUser = (email, password, token, role) => apiPost('/users', { email, password, token, role });
+export const addUser = (email, password, token, role) => apiPost('/register', { email, password, token, role });
 export const fetchSessions = () => apiGet('/sessions');
 export const registerSession = (sessionId) => apiPost(`/sessions/${sessionId}/register`);
 export const cancelSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
