@@ -145,7 +145,7 @@ export const fetchUserSessions = async () => {
 
 export const cancelUserSession = async (sessionId) => {
   try {
-    const response = await api.delete(`/user/sessions/${sessionId}`);
+    const response = await api.delete(`/sessions/${sessionId}`);
     return response.data;
   } catch (error) {
     console.error('Error cancelling user session:', error);
