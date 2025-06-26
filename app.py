@@ -53,7 +53,13 @@ def token_required(f):
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["https://gym-frontend-staging.netlify.app"])
+CORS(app, supports_credentials=True, origins=[
+    "https://gym-frontend-staging.netlify.app",
+    "https://gym-frontend-staging.netlify.app/",
+    "https://gym-frontend-staging.netlify.app/*",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+])
 
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
