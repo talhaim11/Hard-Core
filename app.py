@@ -325,6 +325,15 @@ def cancel_registration(current_user, session_id):
 @app.route('/sessions/<int:session_id>', methods=['POST'])
 @token_required
 def register_to_session(current_user, session_id):
+    return _handle_session_registration(current_user, session_id)
+
+@app.route('/sessions/<int:session_id>/register', methods=['POST'])
+@token_required
+def register_to_session_register(current_user, session_id):
+    return _handle_session_registration(current_user, session_id)
+
+# --- Helper for session registration ---
+def _handle_session_registration(current_user, session_id):
     try:
         with psycopg2.connect(POSTGRES_URL) as conn:
             c = conn.cursor()
@@ -353,7 +362,7 @@ def register_to_session(current_user, session_id):
         return jsonify({'message': 'Registered successfully'})
     except Exception as e:
         import traceback
-        print('[ERROR] Exception in register_to_session:', e)
+        print('[ERROR] Exception in _handle_session_registration:', e)
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -377,12 +386,12 @@ def debug_sessions():
 def debug_user_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("""
+        c.execute('''
             SELECT us.id, u.email, s.date_time
-            FROM user_sessions us
-            JOIN users u ON us.user_id = u.id
-            JOIN sessions s ON us.session_id = s.id
-        """)
+            FROM user_session us
+            JOIN "user" u ON us.user_id = u.id
+            JOIN session s ON us.session_id = s.id
+        ''')
         user_sessions = c.fetchall()
     return jsonify({'user_sessions': user_sessions})
 
@@ -565,7 +574,7 @@ def get_user_sessions(current_user):
 @app.route('/sessions/<int:session_id>/register', methods=['POST'])
 @token_required
 def register_to_session_register(current_user, session_id):
-    return register_to_session(current_user, session_id)
+    return _handle_session_registration(current_user, session_id)
 
 if __name__ == "__main__":
     from os import environ
