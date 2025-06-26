@@ -21,7 +21,8 @@ ALLOWED_TOKENS = {
     "abc123": "user1@example.com",
     "admin777": "admin@example.com",
     "xyz999": "guest@example.com",
-    "root777": "root@example.com"
+    "root777": "root@example.com",
+    "tal777": "taltaltal"
 }
 SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
 def token_required(f):
