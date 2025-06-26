@@ -14,16 +14,8 @@ const UserPage = () => {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    navigate('/'); // Redirect to root instead of /login
-  };
-
   return (
     <div style={{ padding: '20px' }}>
-      <h1>ברוך הבא, משתמש!</h1>
-      <button onClick={handleLogout}>התנתק</button>
       <UserDashboard />
     </div>
   );

@@ -4,7 +4,7 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(30,144,255,0.10);
-  padding: 2.5rem 2rem 5.5rem 2rem; /* extra bottom padding for logout btn */
+  padding: 2.5rem 2rem 4rem 2rem; /* slightly less bottom padding */
   font-family: inherit;
   direction: rtl;
   text-align: right;
@@ -21,19 +21,16 @@
 }
 
 .logout-btn {
-  width: 90%;
-  max-width: 400px;
+  width: 180px;
   display: block;
-  margin: 0 auto;
-  margin-top: 2.5rem;
-  margin-bottom: 0.5rem;
+  margin: 2.5rem auto 0.5rem auto;
   background: #e53935;
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: bold;
   border: none;
   border-radius: 8px;
-  padding: 0.9rem 0;
+  padding: 0.7rem 0;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(229,57,53,0.08);
   transition: background 0.2s;
