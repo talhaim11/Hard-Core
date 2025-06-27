@@ -5,6 +5,7 @@ import WorkoutBoard from '../components/WorkoutBoard';
 import SessionTable from '../components/SessionTable';
 import Notification from '../components/Notification';
 import AdminStats from '../components/AdminStats';
+import InviteTokenManager from '../components/InviteTokenManager';
 import '../styles/AdminPage.css';
 
 const weightliftingSVG = (
@@ -22,6 +23,7 @@ const TABS = [
   { key: 'stats', label: 'סטטיסטיקות' },
   { key: 'users', label: 'ניהול משתמשים' },
   { key: 'sessions', label: 'לוח מפגשים' },
+  { key: 'tokens', label: 'ניהול טוקנים' },
 ];
 
 const AdminPage = () => {
@@ -89,6 +91,12 @@ const AdminPage = () => {
               <h2>לוח מפגשים</h2>
               {token && <SessionTable token={token} showNotification={showNotification} />}
               <WorkoutBoard token={token} />
+            </div>
+          )}
+          {activeTab === 'tokens' && (
+            <div className="admin-section" style={{ textAlign: 'right' }}>
+              <h2>ניהול טוקנים</h2>
+              <InviteTokenManager />
             </div>
           )}
         </div>
