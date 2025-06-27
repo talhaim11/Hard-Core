@@ -162,7 +162,6 @@ def register():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role', 'user')
     token = data.get('token')
 
     # Require and check invite token for registration
@@ -176,8 +175,7 @@ def register():
             return jsonify({'error': 'Invite token already used'}), 401
         if row[2] and row[2] != email:
             return jsonify({'error': 'Token is for a different email'}), 401
-        if row[3] and row[3] != role:
-            return jsonify({'error': 'Token is for a different role'}), 401
+        role = row[3]  # Always use the role from the invite token
 
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         try:
