@@ -490,6 +490,7 @@ def update_session(current_user, session_id):
         conn.commit()
     return jsonify({'message': 'Session updated successfully'})
 
+
 @app.route('/sessions/<int:session_id>', methods=['DELETE'])
 @token_required
 def delete_session(current_user, session_id):
@@ -497,10 +498,16 @@ def delete_session(current_user, session_id):
         return jsonify({'error': 'Unauthorized'}), 403
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
+        # Delete all user registrations for this session
         c.execute('DELETE FROM user_session WHERE session_id = %s', (session_id,))
+        # Delete the session itself
         c.execute('DELETE FROM session WHERE id = %s', (session_id,))
+        deleted_count = c.rowcount
         conn.commit()
-    return jsonify({'message': 'Session deleted successfully'})
+        if deleted_count == 0:
+            return jsonify({'error': 'Session not found or already deleted'}), 404
+        print(f"[DELETE] Deleted session_id={session_id}, deleted_count={deleted_count}")
+    return jsonify({'message': 'Session deleted successfully', 'deleted_count': deleted_count})
 
 @app.route('/users/<int:user_id>', methods=['DELETE'])
 @token_required
