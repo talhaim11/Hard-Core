@@ -1,4 +1,28 @@
 import React, { useEffect, useState } from 'react';
+  // Hebrew days of week, starting from Sunday
+  const daysOfWeek = [
+    { key: 0, label: 'ראשון' },
+    { key: 1, label: 'שני' },
+    { key: 2, label: 'שלישי' },
+    { key: 3, label: 'רביעי' },
+    { key: 4, label: 'חמישי' },
+    { key: 5, label: 'שישי' },
+    { key: 6, label: 'שבת' },
+  ];
+  const [activeDay, setActiveDay] = useState(new Date().getDay());
+
+  // Group allSessions by day of week
+  const sessionsByDay = daysOfWeek.reduce((acc, day) => {
+    acc[day.key] = [];
+    return acc;
+  }, {});
+  allSessions.forEach(session => {
+    if (session.date_time) {
+      const d = new Date(session.date_time);
+      const dayIdx = d.getDay();
+      if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
+    }
+  });
 import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
 import '../styles/UserDashboard.css';
 
@@ -186,17 +210,34 @@ const UserDashboard = () => {
           onChange={e => setFilter(e.target.value)}
           style={{marginBottom:8}}
         />
-        <ul className="register-list">
-          {filteredSessions.map(s => (
-            <li key={s.id}>
-              <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''} | משתתפים: {s.participants}</span>
-              {sessions.some(us => us.id === s.id) ? (
-                <span style={{color:'green',marginRight:8}}>נרשמת</span>
-              ) : (
-                <button onClick={() => handleRegister(s.id)}>הירשם</button>
-              )}
-            </li>
+        {/* Day-of-week tabs */}
+        <div className="day-tabs" style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+          {daysOfWeek.map(day => (
+            <button
+              key={day.key}
+              className={`day-tab-btn${activeDay === day.key ? ' active' : ''}`}
+              style={{ margin: '0 4px', padding: '6px 12px', borderRadius: 6, border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', background: activeDay === day.key ? '#1e90ff' : '#fff', color: activeDay === day.key ? '#fff' : '#222', cursor: 'pointer' }}
+              onClick={() => setActiveDay(day.key)}
+            >
+              {day.label}
+            </button>
           ))}
+        </div>
+        <ul className="register-list">
+          {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
+            sessionsByDay[activeDay].filter(s => !filter || (s.title && s.title.toLowerCase().includes(filter.toLowerCase()))).map(s => (
+              <li key={s.id}>
+                <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''} | משתתפים: {s.participants}</span>
+                {sessions.some(us => us.id === s.id) ? (
+                  <span style={{color:'green',marginRight:8}}>נרשמת</span>
+                ) : (
+                  <button onClick={() => handleRegister(s.id)}>הירשם</button>
+                )}
+              </li>
+            ))
+          ) : (
+            <li style={{ textAlign: 'center' }}>אין מפגשים ליום זה</li>
+          )}
         </ul>
         {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
       </div>

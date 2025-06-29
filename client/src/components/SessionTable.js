@@ -11,6 +11,31 @@ import '../styles/SessionForm.css';
 
 const SessionTable = ({ token, showNotification }) => {
   const [sessions, setSessions] = useState([]);
+  const [activeDay, setActiveDay] = useState(new Date().getDay()); // 0=Sunday, 1=Monday, ...
+  // Hebrew days of week, starting from Sunday
+  const daysOfWeek = [
+    { key: 0, label: 'ראשון' },
+    { key: 1, label: 'שני' },
+    { key: 2, label: 'שלישי' },
+    { key: 3, label: 'רביעי' },
+    { key: 4, label: 'חמישי' },
+    { key: 5, label: 'שישי' },
+    { key: 6, label: 'שבת' },
+  ];
+
+  // Group sessions by day of week
+  const sessionsByDay = daysOfWeek.reduce((acc, day) => {
+    acc[day.key] = [];
+    return acc;
+  }, {});
+  sessions.forEach(session => {
+    if (session.date_time) {
+      const d = new Date(session.date_time);
+      // JS: 0=Sunday, 6=Saturday
+      const dayIdx = d.getDay();
+      if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // session object or null
@@ -65,7 +90,6 @@ const SessionTable = ({ token, showNotification }) => {
   };
 
   const handleDelete = async (sessionId) => {
-    if (!window.confirm('Delete this session?')) return;
     try {
       await deleteSession(sessionId);
       showNotification('Session deleted!', 'success');
@@ -88,6 +112,19 @@ const SessionTable = ({ token, showNotification }) => {
           onCancel={() => { setShowForm(false); setEditing(null); }}
         />
       )}
+      {/* Day-of-week tabs */}
+      <div className="day-tabs" style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+        {daysOfWeek.map(day => (
+          <button
+            key={day.key}
+            className={`day-tab-btn${activeDay === day.key ? ' active' : ''}`}
+            style={{ margin: '0 4px', padding: '6px 12px', borderRadius: 6, border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', background: activeDay === day.key ? '#1e90ff' : '#fff', color: activeDay === day.key ? '#fff' : '#222', cursor: 'pointer' }}
+            onClick={() => setActiveDay(day.key)}
+          >
+            {day.label}
+          </button>
+        ))}
+      </div>
       <table className="session-table">
         <thead>
           <tr>
@@ -99,18 +136,22 @@ const SessionTable = ({ token, showNotification }) => {
           </tr>
         </thead>
         <tbody>
-          {sessions.map(session => (
-            <tr key={session.id} className="session-row">
-              <td>{session.date_time ? new Date(session.date_time).toLocaleDateString() : ''}</td>
-              <td>{session.date_time ? new Date(session.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</td>
-              <td>{session.title}</td>
-              <td>{session.participants}</td>
-              <td>
-                <button className="edit-btn" onClick={() => handleEdit(session)}>ערוך</button>
-                <button className="delete-btn" onClick={() => handleDelete(session.id)}>מחק</button>
-              </td>
-            </tr>
-          ))}
+          {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
+            sessionsByDay[activeDay].map(session => (
+              <tr key={session.id} className="session-row">
+                <td>{session.date_time ? new Date(session.date_time).toLocaleDateString() : ''}</td>
+                <td>{session.date_time ? new Date(session.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</td>
+                <td>{session.title}</td>
+                <td>{session.participants}</td>
+                <td>
+                  <button className="edit-btn" onClick={() => handleEdit(session)}>ערוך</button>
+                  <button className="delete-btn" onClick={() => handleDelete(session.id)}>מחק</button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr><td colSpan="5" style={{ textAlign: 'center' }}>אין מפגשים ליום זה</td></tr>
+          )}
         </tbody>
       </table>
     </div>
