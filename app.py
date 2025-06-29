@@ -250,38 +250,39 @@ def me():
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
 
-@app.route('/book-session', methods=['POST'])
-def book_session():
-    data = request.json
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    payload = decode_token(token)
-    if not payload:
-        return jsonify({'error': 'Invalid or expired token'}), 401
-
-    user_id = payload['sub']
-    date_time = data.get('date_time')  # מחרוזת בפורמט ISO: "2024-07-22T19:00"
-
-    if not date_time:
-        return jsonify({'error': 'Missing date_time'}), 400
-
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-
-        # הכנס את האימון אם הוא לא קיים
-        c.execute("INSERT INTO session (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
-        conn.commit()
-
-        # קבל את מזהה האימון
-        c.execute("SELECT id FROM session WHERE date_time = %s", (date_time,))
-        session_id = c.fetchone()[0]
-
-        # נסה לרשום את המשתמש לאימון
-        try:
-            c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
-            conn.commit()
-            return jsonify({'message': 'Session booked successfully'})
-        except psycopg2.IntegrityError:
-            return jsonify({'error': 'Already registered for this session'}), 409
+# Legacy endpoint - commented out as it uses old schema
+# @app.route('/book-session', methods=['POST'])
+# def book_session():
+#     data = request.json
+#     token = request.headers.get('Authorization', '').replace('Bearer ', '')
+#     payload = decode_token(token)
+#     if not payload:
+#         return jsonify({'error': 'Invalid or expired token'}), 401
+# 
+#     user_id = payload['sub']
+#     date_time = data.get('date_time')  # מחרוזת בפורמט ISO: "2024-07-22T19:00"
+# 
+#     if not date_time:
+#         return jsonify({'error': 'Missing date_time'}), 400
+# 
+#     with psycopg2.connect(POSTGRES_URL) as conn:
+#         c = conn.cursor()
+# 
+#         # הכנס את האימון אם הוא לא קיים
+#         c.execute("INSERT INTO session (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
+#         conn.commit()
+# 
+#         # קבל את מזהה האימון
+#         c.execute("SELECT id FROM session WHERE date_time = %s", (date_time,))
+#         session_id = c.fetchone()[0]
+# 
+#         # נסה לרשום את המשתמש לאימון
+#         try:
+#             c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
+#             conn.commit()
+#             return jsonify({'message': 'Session booked successfully'})
+#         except psycopg2.IntegrityError:
+#             return jsonify({'error': 'Already registered for this session'}), 409
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
@@ -419,21 +420,34 @@ def debug_users():
 def debug_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute('SELECT id, date_time FROM session')
-        sessions = c.fetchall()
+        try:
+            c.execute('SELECT id, date, start_time, end_time, title FROM session')
+            sessions = [{'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4]} for row in c.fetchall()]
+        except psycopg2.Error:
+            c.execute('SELECT id, date_time FROM session')
+            sessions = [{'id': row[0], 'date_time': row[1]} for row in c.fetchall()]
     return jsonify({'sessions': sessions})
 
 @app.route('/debug_user_sessions', methods=['GET'])
 def debug_user_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute('''
-            SELECT us.id, u.email, s.date_time
-            FROM user_session us
-            JOIN "user" u ON us.user_id = u.id
-            JOIN session s ON us.session_id = s.id
-        ''')
-        user_sessions = c.fetchall()
+        try:
+            c.execute('''
+                SELECT us.id, u.email, s.date, s.start_time, s.end_time, s.title
+                FROM user_session us
+                JOIN "user" u ON us.user_id = u.id
+                JOIN session s ON us.session_id = s.id
+            ''')
+            user_sessions = [{'id': row[0], 'email': row[1], 'date': str(row[2]), 'start_time': str(row[3]), 'end_time': str(row[4]), 'title': row[5]} for row in c.fetchall()]
+        except psycopg2.Error:
+            c.execute('''
+                SELECT us.id, u.email, s.date_time
+                FROM user_session us
+                JOIN "user" u ON us.user_id = u.id
+                JOIN session s ON us.session_id = s.id
+            ''')
+            user_sessions = [{'id': row[0], 'email': row[1], 'date_time': row[2]} for row in c.fetchall()]
     return jsonify({'user_sessions': user_sessions})
 
 @app.route('/debug', methods=['GET'])
@@ -598,17 +612,46 @@ def get_user_sessions(current_user):
     user_id = current_user['id']
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute('''
-            SELECT s.id, s.date_time, s.title, s.location
-            FROM session s
-            JOIN user_session us ON s.id = us.session_id
-            WHERE us.user_id = %s
-            ORDER BY s.date_time ASC
-        ''', (user_id,))
-        sessions = [
-            {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3]}
-            for row in c.fetchall()
-        ]
+        try:
+            # Try with new schema (date, start_time, end_time)
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
+                FROM session s
+                JOIN user_session us ON s.id = us.session_id
+                WHERE us.user_id = %s
+                ORDER BY s.date ASC, s.start_time ASC
+            ''', (user_id,))
+            sessions = [
+                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular'}
+                for row in c.fetchall()
+            ]
+        except psycopg2.Error:
+            # Fallback to old schema for backward compatibility
+            try:
+                c.execute('''
+                    SELECT s.id, s.date, s.start_time, s.end_time, s.title
+                    FROM session s
+                    JOIN user_session us ON s.id = us.session_id
+                    WHERE us.user_id = %s
+                    ORDER BY s.date ASC, s.start_time ASC
+                ''', (user_id,))
+                sessions = [
+                    {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': 'regular'}
+                    for row in c.fetchall()
+                ]
+            except psycopg2.Error:
+                # Final fallback for very old schema
+                c.execute('''
+                    SELECT s.id, s.date_time, s.title, COALESCE(s.location, '') as location
+                    FROM session s
+                    JOIN user_session us ON s.id = us.session_id
+                    WHERE us.user_id = %s
+                    ORDER BY s.date_time ASC
+                ''', (user_id,))
+                sessions = [
+                    {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3], 'session_type': 'regular'}
+                    for row in c.fetchall()
+                ]
     return jsonify({'sessions': sessions})
 
 @app.route('/sessions/<int:session_id>/register', methods=['POST'])
