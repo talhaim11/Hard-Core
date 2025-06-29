@@ -126,11 +126,6 @@ const UserDashboard = () => {
     }
   };
 
-  // Filter sessions
-  const filteredSessions = allSessions.filter(s =>
-    (!filter || (s.title && s.title.toLowerCase().includes(filter.toLowerCase())))
-  );
-
   if (loading) return <div>טוען נתונים...</div>;
 
   const handleLogout = () => {
