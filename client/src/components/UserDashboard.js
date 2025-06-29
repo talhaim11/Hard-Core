@@ -32,8 +32,8 @@ const UserDashboard = () => {
     return acc;
   }, {});
   allSessions.forEach(session => {
-    if (session.date_time) {
-      const d = new Date(session.date_time);
+    if (session.date) {
+      const d = new Date(session.date);
       const dayIdx = d.getDay();
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
@@ -129,9 +129,9 @@ const UserDashboard = () => {
   if (loading) return <div>טוען נתונים...</div>;
 
   const handleLogout = () => {
-    // Remove token/localStorage and reload or redirect
+    // Remove token/localStorage and redirect to site root
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   return (
@@ -192,7 +192,7 @@ const UserDashboard = () => {
           <ul className="sessions-list">
             {sessions.map(s => (
               <li key={s.id}>
-                <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''}</span>
+                <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
                 <button onClick={() => handleCancel(s.id)}>בטל הרשמה</button>
               </li>
             ))}
@@ -207,12 +207,30 @@ const UserDashboard = () => {
           style={{marginBottom:8}}
         />
         {/* Day-of-week tabs */}
-        <div className="day-tabs" style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+        <div className="day-tabs" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          margin: '1rem 0', 
+          flexWrap: 'wrap', 
+          gap: '4px',
+          maxWidth: '100%',
+          overflowX: 'auto'
+        }}>
           {daysOfWeek.map(day => (
             <button
               key={day.key}
               className={`day-tab-btn${activeDay === day.key ? ' active' : ''}`}
-              style={{ margin: '0 4px', padding: '6px 12px', borderRadius: 6, border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', background: activeDay === day.key ? '#1e90ff' : '#fff', color: activeDay === day.key ? '#fff' : '#222', cursor: 'pointer' }}
+              style={{ 
+                padding: '6px 8px', 
+                borderRadius: 6, 
+                border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', 
+                background: activeDay === day.key ? '#1e90ff' : '#fff', 
+                color: activeDay === day.key ? '#fff' : '#222', 
+                cursor: 'pointer',
+                fontSize: '14px',
+                minWidth: '60px',
+                whiteSpace: 'nowrap'
+              }}
               onClick={() => setActiveDay(day.key)}
             >
               {day.label}
@@ -223,7 +241,7 @@ const UserDashboard = () => {
           {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
             sessionsByDay[activeDay].filter(s => !filter || (s.title && s.title.toLowerCase().includes(filter.toLowerCase()))).map(s => (
               <li key={s.id}>
-                <span>{s.title} - {s.date_time ? new Date(s.date_time).toLocaleString() : ''} | משתתפים: {s.participants}</span>
+                <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''} | משתתפים: {s.participants}</span>
                 {sessions.some(us => us.id === s.id) ? (
                   <span style={{color:'green',marginRight:8}}>נרשמת</span>
                 ) : (

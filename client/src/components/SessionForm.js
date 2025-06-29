@@ -8,17 +8,18 @@ const frequencies = [
 ];
 
 const SessionForm = ({ initial, onSubmit, onCancel }) => {
-  // Split initial date_time into date and time if available
-  let initialDate = '', initialTime = '';
-  if (initial?.date_time) {
-    const dt = new Date(initial.date_time);
-    initialDate = dt.toISOString().slice(0, 10);
-    initialTime = dt.toTimeString().slice(0, 5);
+  // Split initial data into separate fields if available
+  let initialDate = '', initialStartTime = '', initialEndTime = '';
+  if (initial) {
+    initialDate = initial.date || '';
+    initialStartTime = initial.start_time || '';
+    initialEndTime = initial.end_time || '';
   }
+  
   const [title, setTitle] = useState(initial?.title || '');
   const [date, setDate] = useState(initialDate);
-  const [time, setTime] = useState(initialTime);
-  const [location, setLocation] = useState(initial?.location || '');
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(initialEndTime);
   const [frequency, setFrequency] = useState('once');
   const [endDate, setEndDate] = useState('');
 
@@ -26,13 +27,13 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
   const maxEndDate = date ? new Date(new Date(date).setMonth(new Date(date).getMonth() + MAX_MONTHS_AHEAD)).toISOString().slice(0, 10) : '';
 
   const generateDates = () => {
-    if (frequency === 'once' || !endDate) return [new Date(`${date}T${time}`)];
-    const start = new Date(`${date}T${time}`);
-    const end = new Date(`${endDate}T${time}`);
+    if (frequency === 'once' || !endDate) return [date];
+    const start = new Date(date);
+    const end = new Date(endDate);
     let dates = [];
     let current = new Date(start);
     while (current <= end) {
-      dates.push(new Date(current));
+      dates.push(current.toISOString().slice(0, 10));
       if (frequency === 'daily') current.setDate(current.getDate() + 1);
       else if (frequency === 'weekly') current.setDate(current.getDate() + 7);
     }
@@ -41,9 +42,9 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!date || !time) return;
-    const dates = generateDates().map(dt => dt.toISOString());
-    onSubmit({ title, dates, location });
+    if (!date || !startTime || !endTime || !title) return;
+    const dates = generateDates();
+    onSubmit({ title, dates, start_time: startTime, end_time: endTime });
   };
 
   return (
@@ -54,8 +55,11 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
       <label>תאריך
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
-      <label>שעה
-        <input type="time" value={time} onChange={e => setTime(e.target.value)} required />
+      <label>שעת התחלה
+        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+      </label>
+      <label>שעת סיום
+        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
       </label>
       <label>חזרתיות
         <select value={frequency} onChange={e => setFrequency(e.target.value)}>
@@ -67,9 +71,6 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
           <input type="date" value={endDate} min={date} max={maxEndDate} onChange={e => setEndDate(e.target.value)} required />
         </label>
       )}
-      <label>מיקום
-        <input value={location} onChange={e => setLocation(e.target.value)} />
-      </label>
       <div className="form-actions">
         <button type="submit">שמור</button>
         <button type="button" onClick={onCancel}>ביטול</button>

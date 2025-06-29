@@ -26,7 +26,7 @@ CORS(app, supports_credentials=True, origins=[
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-POSTGRES_URL = os.getenv('POSTGRES_URL')
+POSTGRES_URL = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL')
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -117,7 +117,9 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS session (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
-                date_time TIMESTAMP NOT NULL UNIQUE,
+                date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
                 location TEXT
             );
         ''')
@@ -270,14 +272,14 @@ def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute('''
-            SELECT s.id, s.date_time, s.title, s.location, COUNT(us.user_id) as participant_count
+            SELECT s.id, s.date, s.start_time, s.end_time, s.title, COUNT(us.user_id) as participant_count
             FROM session s
             LEFT JOIN user_session us ON s.id = us.session_id
-            GROUP BY s.id, s.date_time, s.title, s.location
-            ORDER BY s.date_time ASC
+            GROUP BY s.id, s.date, s.start_time, s.end_time, s.title
+            ORDER BY s.date ASC, s.start_time ASC
         ''')
         sessions = [
-            {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3], 'participants': row[4]}
+            {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'participants': row[5]}
             for row in c.fetchall()
         ]
     return jsonify({'sessions': sessions})
@@ -290,39 +292,32 @@ def create_session(payload):
 
     data = request.json
     title = data.get('title')
-    location = data.get('location', 'Main Gym')
-    dates = data.get('dates')  # New: array of ISO datetimes
-    date_time = data.get('date_time')  # Old: single ISO datetime
+    dates = data.get('dates')  # Array of dates in YYYY-MM-DD format
+    start_time = data.get('start_time')  # HH:MM format
+    end_time = data.get('end_time')  # HH:MM format
 
-    if not title or (not date_time and not dates):
-        return jsonify({'error': 'Missing title or date(s)'}), 400
+    if not title or not dates or not start_time or not end_time:
+        return jsonify({'error': 'Missing required fields: title, dates, start_time, end_time'}), 400
 
     created = []
     skipped = []
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        if dates:
-            for dt in dates:
-                try:
-                    c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s) ON CONFLICT (date_time) DO NOTHING RETURNING id", (title, dt, location))
-                    res = c.fetchone()
-                    if res:
-                        created.append(dt)
-                    else:
-                        skipped.append(dt)
-                except Exception as e:
-                    skipped.append(dt)
-            conn.commit()
-            return jsonify({'message': f'{len(created)} sessions created, {len(skipped)} skipped (duplicates?)', 'created': created, 'skipped': skipped}), 201
-        else:
+        for date_str in dates:
             try:
-                c.execute("INSERT INTO session (title, date_time, location) VALUES (%s, %s, %s)", (title, date_time, location))
-                conn.commit()
-                return jsonify({'message': 'Session created successfully'}), 201
-            except Exception as e:
-                if 'unique constraint' in str(e).lower():
-                    return jsonify({'error': 'Session already exists'}), 409
-                return jsonify({'error': str(e)}), 500
+                c.execute("INSERT INTO session (title, date, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING id", 
+                         (title, date_str, start_time, end_time))
+                session_id = c.fetchone()[0]
+                created.append({'date': date_str, 'id': session_id})
+            except psycopg2.IntegrityError:
+                skipped.append({'date': date_str, 'reason': 'Session already exists for this date/time'})
+        conn.commit()
+
+    return jsonify({
+        'message': f'Created {len(created)} sessions, skipped {len(skipped)}',
+        'created': created,
+        'skipped': skipped
+    }), 201
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
@@ -472,14 +467,15 @@ def update_session(current_user, session_id):
         return jsonify({'error': 'Unauthorized'}), 403
     data = request.json
     title = data.get('title')
-    date_time = data.get('date_time')
-    location = data.get('location')
-    if not title or not date_time:
-        return jsonify({'error': 'Missing title or date_time'}), 400
+    date = data.get('date')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    if not title or not date or not start_time or not end_time:
+        return jsonify({'error': 'Missing required fields: title, date, start_time, end_time'}), 400
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute("UPDATE session SET title = %s, date_time = %s, location = %s WHERE id = %s",
-                  (title, date_time, location, session_id))
+        c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s WHERE id = %s",
+                  (title, date, start_time, end_time, session_id))
         conn.commit()
     return jsonify({'message': 'Session updated successfully'})
 
