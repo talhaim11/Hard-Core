@@ -242,8 +242,8 @@ const UserDashboard = () => {
             sessionsByDay[activeDay].filter(s => !filter || (s.title && s.title.toLowerCase().includes(filter.toLowerCase()))).map(s => (
               <li key={s.id} style={{ 
                 opacity: s.session_type === 'blocked' ? 0.8 : 1,
-                background: s.session_type === 'blocked' ? '#ffebee' : 'transparent',
-                color: s.session_type === 'blocked' ? '#c62828' : 'inherit',
+                background: s.session_type === 'blocked' ? '#fff3e0' : 'transparent',
+                color: s.session_type === 'blocked' ? '#e65100' : 'inherit',
                 padding: '8px',
                 borderRadius: '4px',
                 margin: '4px 0'
