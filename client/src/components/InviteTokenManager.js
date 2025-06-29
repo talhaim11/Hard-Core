@@ -68,7 +68,9 @@ const InviteTokenManager = () => {
           width: '100%', 
           direction: 'rtl',
           borderCollapse: 'collapse',
-          border: '1px solid #ddd'
+          border: '1px solid #ddd',
+          tableLayout: 'fixed',
+          wordBreak: 'break-all'
         }}>
           <thead>
             <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -119,7 +121,11 @@ const InviteTokenManager = () => {
                   fontFamily: 'monospace', 
                   padding: '10px', 
                   border: '1px solid #ddd',
-                  color: '#333'
+                  color: '#333',
+                  fontSize: '12px',
+                  maxWidth: '200px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>{t.token}</td>
                 <td style={{ 
                   padding: '10px', 

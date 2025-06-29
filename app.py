@@ -286,17 +286,32 @@ def book_session():
 def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute('''
-            SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, COUNT(us.user_id) as participant_count
-            FROM session s
-            LEFT JOIN user_session us ON s.id = us.session_id
-            GROUP BY s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
-            ORDER BY s.date ASC, s.start_time ASC
-        ''')
-        sessions = [
-            {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular', 'participants': row[6]}
-            for row in c.fetchall()
-        ]
+        try:
+            # Try with session_type column first
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, COUNT(us.user_id) as participant_count
+                FROM session s
+                LEFT JOIN user_session us ON s.id = us.session_id
+                GROUP BY s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
+                ORDER BY s.date ASC, s.start_time ASC
+            ''')
+            sessions = [
+                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular', 'participants': row[6]}
+                for row in c.fetchall()
+            ]
+        except psycopg2.Error:
+            # Fallback to query without session_type column
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, COUNT(us.user_id) as participant_count
+                FROM session s
+                LEFT JOIN user_session us ON s.id = us.session_id
+                GROUP BY s.id, s.date, s.start_time, s.end_time, s.title
+                ORDER BY s.date ASC, s.start_time ASC
+            ''')
+            sessions = [
+                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': 'regular', 'participants': row[5]}
+                for row in c.fetchall()
+            ]
     return jsonify({'sessions': sessions})
 
 @app.route('/sessions', methods=['POST'])

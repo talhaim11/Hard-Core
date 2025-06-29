@@ -218,6 +218,7 @@ body, html {
 }
 .session-table tr:hover {
   background: #f0f8ff;
+  color: #333;
 }
 .logout-btn {
   background: linear-gradient(90deg, #1e90ff 60%, #00c6fb 100%);

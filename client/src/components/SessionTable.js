@@ -157,7 +157,8 @@ const SessionTable = ({ token, showNotification }) => {
           {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
             sessionsByDay[activeDay].map(session => (
               <tr key={session.id} className="session-row" style={{
-                backgroundColor: session.session_type === 'blocked' ? '#fff3cd' : 'transparent'
+                backgroundColor: session.session_type === 'blocked' ? '#ffebee' : 'transparent',
+                color: session.session_type === 'blocked' ? '#c62828' : 'inherit'
               }}>
                 <td>{session.date ? new Date(session.date).toLocaleDateString() : ''}</td>
                 <td>{session.start_time && session.end_time ? `${session.start_time} - ${session.end_time}` : ''}</td>
