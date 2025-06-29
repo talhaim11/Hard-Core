@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../config';
 import '../styles/AdminUserManager.css';
 
 export default function AdminPanel() {
@@ -8,10 +9,11 @@ export default function AdminPanel() {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("https://hard-core.onrender.com/users", {
-        headers: { Authorization: localStorage.getItem("token") },
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(res.data);
+      setUsers(res.data.users || []);
     } catch (err) {
       console.error("Failed to fetch users", err);
     }
@@ -20,13 +22,16 @@ export default function AdminPanel() {
   const deleteUserHandler = async (userId) => {
     if (!window.confirm('Delete this user?')) return;
     try {
-      await axios.delete(`https://hard-core.onrender.com/users/${userId}`, {
-        headers: { Authorization: localStorage.getItem("token") },
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       alert('User deleted!');
       fetchUsers();
     } catch (err) {
-      alert('Failed to delete user');
+      console.error("Error deleting user:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete user';
+      alert(`Failed to delete user: ${errorMsg}`);
     }
   };
 

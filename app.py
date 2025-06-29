@@ -643,17 +643,50 @@ def delete_user(current_user, user_id):
     try:
         with psycopg2.connect(POSTGRES_URL) as conn:
             c = conn.cursor()
-            # First delete user's session registrations
-            c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
-            # Then delete the user
-            c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
-            if c.rowcount == 0:
+            
+            # Check if user exists first
+            c.execute('SELECT id, email FROM "user" WHERE id = %s', (user_id,))
+            user = c.fetchone()
+            if not user:
                 return jsonify({'error': 'User not found'}), 404
+            
+            print(f"Attempting to delete user {user_id} ({user[1]})")
+            
+            # First, try to delete user's session registrations
+            c.execute('SELECT COUNT(*) FROM user_session WHERE user_id = %s', (user_id,))
+            session_count = c.fetchone()[0]
+            print(f"User has {session_count} session registrations")
+            
+            if session_count > 0:
+                c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+                print(f"Deleted {c.rowcount} user_session records")
+            
+            # Check for any other references (invite tokens created by this user, etc.)
+            # Note: invite_token table doesn't have foreign keys to user, so no need to clean it
+            
+            # Delete the user
+            c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+            deleted_count = c.rowcount
+            print(f"Deleted {deleted_count} user records")
+            
+            if deleted_count == 0:
+                return jsonify({'error': 'User not found or already deleted'}), 404
+            
             conn.commit()
-        return jsonify({'message': 'User deleted successfully'})
+            print(f"Successfully deleted user {user_id}")
+            
+        return jsonify({'message': f'User {user[1]} deleted successfully'})
+        
+    except psycopg2.IntegrityError as e:
+        print(f"Integrity error deleting user {user_id}: {str(e)}")
+        return jsonify({'error': f'Cannot delete user due to data constraints: {str(e)}'}), 400
+        
     except psycopg2.Error as e:
+        print(f"Database error deleting user {user_id}: {str(e)}")
         return jsonify({'error': f'Database error: {str(e)}'}), 500
+        
     except Exception as e:
+        print(f"Unexpected error deleting user {user_id}: {str(e)}")
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/profile', methods=['GET', 'PUT'])
