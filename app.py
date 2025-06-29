@@ -333,23 +333,64 @@ def create_session(payload):
 
     created = []
     skipped = []
+    deleted_sessions = []
+    
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         for date_str in dates:
             try:
+                # Check for overlaps
+                overlapping = check_time_overlap(date_str, start_time, end_time)
+                
+                if overlapping:
+                    if session_type == 'blocked':
+                        # Delete overlapping regular sessions
+                        regular_sessions = [s for s in overlapping if s[4] != 'blocked']
+                        for session in regular_sessions:
+                            c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                            c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                            deleted_sessions.append(f"{session[1]} on {date_str}")
+                    else:
+                        # Check if there are blocked sessions preventing creation
+                        blocked_sessions = [s for s in overlapping if s[4] == 'blocked']
+                        if blocked_sessions:
+                            skipped.append({
+                                'date': date_str, 
+                                'reason': 'Time slot is blocked for personal trainer usage'
+                            })
+                            continue
+                        
+                        # Check for regular session overlaps
+                        regular_overlaps = [s for s in overlapping if s[4] != 'blocked']
+                        if regular_overlaps:
+                            skipped.append({
+                                'date': date_str, 
+                                'reason': f'Overlaps with existing session: {regular_overlaps[0][1]}'
+                            })
+                            continue
+                
+                # Create the session
                 c.execute("INSERT INTO session (title, date, start_time, end_time, session_type) VALUES (%s, %s, %s, %s, %s) RETURNING id", 
                          (title, date_str, start_time, end_time, session_type))
                 session_id = c.fetchone()[0]
                 created.append({'date': date_str, 'id': session_id})
+                
             except psycopg2.IntegrityError:
-                skipped.append({'date': date_str, 'reason': 'Session already exists for this date/time'})
+                skipped.append({'date': date_str, 'reason': 'Database constraint violation'})
+        
         conn.commit()
 
-    return jsonify({
+    response = {
         'message': f'Created {len(created)} sessions, skipped {len(skipped)}',
         'created': created,
         'skipped': skipped
-    }), 201
+    }
+    
+    if deleted_sessions:
+        response['deleted'] = deleted_sessions
+        response['message'] += f', deleted {len(deleted_sessions)} overlapping sessions'
+
+    return jsonify(response), 201
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
@@ -514,19 +555,65 @@ def get_session_users(session_id):
 def update_session(current_user, session_id):
     if current_user['role'] != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
+    
     data = request.json
     title = data.get('title')
     date = data.get('date')
     start_time = data.get('start_time')
     end_time = data.get('end_time')
+    session_type = data.get('session_type', 'regular')
+    
     if not title or not date or not start_time or not end_time:
         return jsonify({'error': 'Missing required fields: title, date, start_time, end_time'}), 400
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-        c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s WHERE id = %s",
-                  (title, date, start_time, end_time, session_id))
-        conn.commit()
-    return jsonify({'message': 'Session updated successfully'})
+    
+    try:
+        # Check for overlaps (excluding the current session being updated)
+        overlapping = check_time_overlap(date, start_time, end_time, exclude_session_id=session_id)
+        
+        if overlapping:
+            if session_type == 'blocked':
+                # Delete overlapping regular sessions
+                deleted_sessions = []
+                with psycopg2.connect(POSTGRES_URL) as conn:
+                    c = conn.cursor()
+                    regular_sessions = [s for s in overlapping if s[4] != 'blocked']
+                    for session in regular_sessions:
+                        c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                        c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                        deleted_sessions.append(f"{session[1]} on {date}")
+                    
+                    # Update the current session
+                    c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s, session_type = %s WHERE id = %s",
+                              (title, date, start_time, end_time, session_type, session_id))
+                    conn.commit()
+                
+                response = {'message': 'Session updated successfully'}
+                if deleted_sessions:
+                    response['deleted'] = deleted_sessions
+                    response['message'] += f', deleted {len(deleted_sessions)} overlapping sessions'
+                return jsonify(response)
+            else:
+                # Check for blocked sessions preventing update
+                blocked_sessions = [s for s in overlapping if s[4] == 'blocked']
+                if blocked_sessions:
+                    return jsonify({'error': 'Cannot update: Time slot is blocked for personal trainer usage'}), 400
+                
+                # Check for regular session overlaps
+                regular_overlaps = [s for s in overlapping if s[4] != 'blocked']
+                if regular_overlaps:
+                    return jsonify({'error': f'Cannot update: Overlaps with existing session: {regular_overlaps[0][1]}'}), 400
+        
+        # No overlaps, proceed with update
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s, session_type = %s WHERE id = %s",
+                      (title, date, start_time, end_time, session_type, session_id))
+            conn.commit()
+        
+        return jsonify({'message': 'Session updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Error updating session: {str(e)}'}), 500
 
 
 @app.route('/sessions/<int:session_id>', methods=['DELETE'])
@@ -552,12 +639,22 @@ def delete_session(current_user, session_id):
 def delete_user(current_user, user_id):
     if current_user['role'] != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-        c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
-        c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
-        conn.commit()
-    return jsonify({'message': 'User deleted successfully'})
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            # First delete user's session registrations
+            c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+            # Then delete the user
+            c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+            if c.rowcount == 0:
+                return jsonify({'error': 'User not found'}), 404
+            conn.commit()
+        return jsonify({'message': 'User deleted successfully'})
+    except psycopg2.Error as e:
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/profile', methods=['GET', 'PUT'])
 @token_required
@@ -693,6 +790,56 @@ def list_invite_tokens(current_user):
     return jsonify({'tokens': tokens})
 
 
+def check_time_overlap(date, start_time, end_time, exclude_session_id=None):
+    """Check if there's any time overlap with existing sessions on the same date"""
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Convert times to comparable format
+        query = '''
+            SELECT id, title, start_time, end_time, session_type
+            FROM session 
+            WHERE date = %s 
+            AND (
+                (start_time < %s AND end_time > %s) OR  -- existing session overlaps with new session
+                (start_time < %s AND end_time > %s) OR  -- new session overlaps with existing session
+                (start_time >= %s AND end_time <= %s) OR -- existing session is within new session
+                (start_time <= %s AND end_time >= %s)    -- new session is within existing session
+            )
+        '''
+        params = [date, end_time, start_time, start_time, end_time, start_time, end_time, start_time, end_time]
+        
+        if exclude_session_id:
+            query += ' AND id != %s'
+            params.append(exclude_session_id)
+            
+        c.execute(query, params)
+        return c.fetchall()
+
+def handle_blocked_session_conflicts(date, start_time, end_time, session_type):
+    """Handle conflicts when creating a blocked session"""
+    if session_type == 'blocked':
+        # Check for overlapping regular sessions
+        overlapping = check_time_overlap(date, start_time, end_time)
+        regular_sessions_to_delete = [s for s in overlapping if s[4] != 'blocked']
+        
+        if regular_sessions_to_delete:
+            with psycopg2.connect(POSTGRES_URL) as conn:
+                c = conn.cursor()
+                for session in regular_sessions_to_delete:
+                    # Delete user registrations first
+                    c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                    # Delete the session
+                    c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                conn.commit()
+            
+            deleted_titles = [s[1] for s in regular_sessions_to_delete]
+            return {
+                'deleted_sessions': deleted_titles,
+                'message': f'Deleted {len(regular_sessions_to_delete)} overlapping regular sessions: {", ".join(deleted_titles)}'
+            }
+    
+    return None
 
 if __name__ == "__main__":
     from os import environ

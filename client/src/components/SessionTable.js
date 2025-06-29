@@ -62,12 +62,23 @@ const SessionTable = ({ token, showNotification }) => {
 
   const handleCreate = async (sessionData) => {
     try {
-      await createSession(sessionData);
-      showNotification('Session created!', 'success');
+      const response = await createSession(sessionData);
+      
+      // Show detailed feedback
+      let message = `Created ${response.created?.length || 0} sessions`;
+      if (response.skipped?.length > 0) {
+        message += `, skipped ${response.skipped.length} (conflicts)`;
+      }
+      if (response.deleted?.length > 0) {
+        message += `, deleted ${response.deleted.length} overlapping sessions`;
+      }
+      
+      showNotification(message, response.skipped?.length > 0 ? 'warning' : 'success');
       setShowForm(false);
       loadSessions();
     } catch (e) {
-      showNotification('Failed to create session', 'error');
+      const errorMsg = e.response?.data?.error || 'Failed to create session';
+      showNotification(errorMsg, 'error');
     }
   };
 
@@ -79,13 +90,20 @@ const SessionTable = ({ token, showNotification }) => {
 
   const handleUpdate = async (sessionData) => {
     try {
-      await updateSession(editing.id, sessionData);
-      showNotification('Session updated!', 'success');
+      const response = await updateSession(editing.id, sessionData);
+      
+      let message = 'Session updated!';
+      if (response.deleted?.length > 0) {
+        message += ` (deleted ${response.deleted.length} overlapping sessions)`;
+      }
+      
+      showNotification(message, 'success');
       setShowForm(false);
       setEditing(null);
       loadSessions();
     } catch (e) {
-      showNotification('Failed to update session', 'error');
+      const errorMsg = e.response?.data?.error || 'Failed to update session';
+      showNotification(errorMsg, 'error');
     }
   };
 
