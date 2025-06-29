@@ -169,7 +169,7 @@ def create_invite_token_table():
 # add_location_column()
 # add_title_column()
 # add_name_column()
-add_session_type_column()
+# add_session_type_column()
 create_invite_token_table()
 
 
