@@ -1,14 +1,29 @@
 import React, { useEffect, useState } from 'react';
-  // Hebrew days of week, starting from Sunday
-  const daysOfWeek = [
-    { key: 0, label: 'ראשון' },
-    { key: 1, label: 'שני' },
-    { key: 2, label: 'שלישי' },
-    { key: 3, label: 'רביעי' },
-    { key: 4, label: 'חמישי' },
-    { key: 5, label: 'שישי' },
-    { key: 6, label: 'שבת' },
-  ];
+import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
+import '../styles/UserDashboard.css';
+
+// Hebrew days of week, starting from Sunday
+const daysOfWeek = [
+  { key: 0, label: 'ראשון' },
+  { key: 1, label: 'שני' },
+  { key: 2, label: 'שלישי' },
+  { key: 3, label: 'רביעי' },
+  { key: 4, label: 'חמישי' },
+  { key: 5, label: 'שישי' },
+  { key: 6, label: 'שבת' },
+];
+
+const UserDashboard = () => {
+  const [sessions, setSessions] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [allSessions, setAllSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
+  const [message, setMessage] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [editMode, setEditMode] = useState(false);
+  const [editProfile, setEditProfile] = useState({ name: '', email: '', password: '' });
+  const [achievements, setAchievements] = useState([]);
   const [activeDay, setActiveDay] = useState(new Date().getDay());
 
   // Group allSessions by day of week
@@ -23,20 +38,6 @@ import React, { useEffect, useState } from 'react';
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
-import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
-import '../styles/UserDashboard.css';
-
-const UserDashboard = () => {
-  const [sessions, setSessions] = useState([]);
-  const [profile, setProfile] = useState(null);
-  const [allSessions, setAllSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
-  const [message, setMessage] = useState('');
-  const [notifications, setNotifications] = useState([]);
-  const [editMode, setEditMode] = useState(false);
-  const [editProfile, setEditProfile] = useState({ name: '', email: '', password: '' });
-  const [achievements, setAchievements] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
