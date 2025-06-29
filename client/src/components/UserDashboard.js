@@ -136,7 +136,7 @@ const UserDashboard = () => {
 
   return (
     <div className="user-dashboard">
-      <div className="welcome-message">ברוך הבא!</div>
+      <div className="welcome-message">No pain, no gain.</div>
       <h2 style={{textAlign:'center', marginBottom:'2rem'}}>הדשבורד שלי</h2>
       {/* Notifications */}
       {notifications.length > 0 && (
@@ -240,9 +240,18 @@ const UserDashboard = () => {
         <ul className="register-list">
           {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
             sessionsByDay[activeDay].filter(s => !filter || (s.title && s.title.toLowerCase().includes(filter.toLowerCase()))).map(s => (
-              <li key={s.id}>
-                <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''} | משתתפים: {s.participants}</span>
-                {sessions.some(us => us.id === s.id) ? (
+              <li key={s.id} style={{ 
+                opacity: s.session_type === 'blocked' ? 0.6 : 1,
+                background: s.session_type === 'blocked' ? '#f8f8f8' : 'transparent'
+              }}>
+                <span>
+                  {s.session_type === 'blocked' && '🚫 '}
+                  {s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}
+                  {s.session_type === 'blocked' ? ' - זמן חסום' : ` | משתתפים: ${s.participants}`}
+                </span>
+                {s.session_type === 'blocked' ? (
+                  <span style={{color:'#666',marginRight:8,fontStyle:'italic'}}>לא ניתן להירשם</span>
+                ) : sessions.some(us => us.id === s.id) ? (
                   <span style={{color:'green',marginRight:8}}>נרשמת</span>
                 ) : (
                   <button onClick={() => handleRegister(s.id)}>הירשם</button>

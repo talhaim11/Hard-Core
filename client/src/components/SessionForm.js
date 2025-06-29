@@ -22,6 +22,7 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
   const [endTime, setEndTime] = useState(initialEndTime);
   const [frequency, setFrequency] = useState('once');
   const [endDate, setEndDate] = useState('');
+  const [sessionType, setSessionType] = useState(initial?.session_type || 'regular');
 
   // Calculate max end date (3 months from selected start date)
   const maxEndDate = date ? new Date(new Date(date).setMonth(new Date(date).getMonth() + MAX_MONTHS_AHEAD)).toISOString().slice(0, 10) : '';
@@ -44,7 +45,7 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
     e.preventDefault();
     if (!date || !startTime || !endTime || !title) return;
     const dates = generateDates();
-    onSubmit({ title, dates, start_time: startTime, end_time: endTime });
+    onSubmit({ title, dates, start_time: startTime, end_time: endTime, session_type: sessionType });
   };
 
   return (
@@ -60,6 +61,12 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
       </label>
       <label>שעת סיום
         <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+      </label>
+      <label>סוג אימון
+        <select value={sessionType} onChange={e => setSessionType(e.target.value)}>
+          <option value="regular">אימון רגיל</option>
+          <option value="blocked">זמן חסום (מאמן אישי)</option>
+        </select>
       </label>
       <label>חזרתיות
         <select value={frequency} onChange={e => setFrequency(e.target.value)}>

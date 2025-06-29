@@ -102,6 +102,19 @@ def add_name_column():
             else:
                 raise e
 
+def add_session_type_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE session ADD COLUMN session_type TEXT DEFAULT 'regular'")
+            conn.commit()
+            print("✅ Column 'session_type' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e) or "already exists" in str(e):
+                print("ℹ️ Column 'session_type' already exists.")
+            else:
+                raise e
+
 def create_tables():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
@@ -120,7 +133,8 @@ def create_tables():
                 date DATE NOT NULL,
                 start_time TIME NOT NULL,
                 end_time TIME NOT NULL,
-                location TEXT
+                location TEXT,
+                session_type TEXT DEFAULT 'regular'
             );
         ''')
         c.execute('''
@@ -155,6 +169,7 @@ def create_invite_token_table():
 # add_location_column()
 # add_title_column()
 # add_name_column()
+add_session_type_column()
 create_invite_token_table()
 
 
@@ -272,14 +287,14 @@ def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute('''
-            SELECT s.id, s.date, s.start_time, s.end_time, s.title, COUNT(us.user_id) as participant_count
+            SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, COUNT(us.user_id) as participant_count
             FROM session s
             LEFT JOIN user_session us ON s.id = us.session_id
-            GROUP BY s.id, s.date, s.start_time, s.end_time, s.title
+            GROUP BY s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
             ORDER BY s.date ASC, s.start_time ASC
         ''')
         sessions = [
-            {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'participants': row[5]}
+            {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular', 'participants': row[6]}
             for row in c.fetchall()
         ]
     return jsonify({'sessions': sessions})
@@ -295,6 +310,7 @@ def create_session(payload):
     dates = data.get('dates')  # Array of dates in YYYY-MM-DD format
     start_time = data.get('start_time')  # HH:MM format
     end_time = data.get('end_time')  # HH:MM format
+    session_type = data.get('session_type', 'regular')  # 'regular' or 'blocked'
 
     if not title or not dates or not start_time or not end_time:
         return jsonify({'error': 'Missing required fields: title, dates, start_time, end_time'}), 400
@@ -305,8 +321,8 @@ def create_session(payload):
         c = conn.cursor()
         for date_str in dates:
             try:
-                c.execute("INSERT INTO session (title, date, start_time, end_time) VALUES (%s, %s, %s, %s) RETURNING id", 
-                         (title, date_str, start_time, end_time))
+                c.execute("INSERT INTO session (title, date, start_time, end_time, session_type) VALUES (%s, %s, %s, %s, %s) RETURNING id", 
+                         (title, date_str, start_time, end_time, session_type))
                 session_id = c.fetchone()[0]
                 created.append({'date': date_str, 'id': session_id})
             except psycopg2.IntegrityError:
@@ -350,12 +366,16 @@ def _handle_session_registration(current_user, session_id):
             print(f"[DEBUG] User exists: {user_row}")
             if not user_row:
                 return jsonify({'error': 'User does not exist'}), 404
-            # Check if session exists
-            c.execute('SELECT id FROM session WHERE id = %s', (session_id,))
+            # Check if session exists and get its type
+            c.execute('SELECT id, session_type FROM session WHERE id = %s', (session_id,))
             session_row = c.fetchone()
             print(f"[DEBUG] Session exists: {session_row}")
             if not session_row:
                 return jsonify({'error': 'Session does not exist'}), 404
+            # Check if session is blocked
+            session_type = session_row[1] or 'regular'
+            if session_type == 'blocked':
+                return jsonify({'error': 'Cannot register for blocked sessions'}), 403
             # Check if already registered
             c.execute('SELECT * FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
             if c.fetchone():
@@ -622,6 +642,7 @@ if __name__ == "__main__":
     # Try connecting to the database and print any errors
     try:
         create_tables()
+        add_session_type_column()
         with psycopg2.connect(POSTGRES_URL) as conn:
             print("[STARTUP] Successfully connected to Postgres!")
     except Exception as e:

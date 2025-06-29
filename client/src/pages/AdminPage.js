@@ -58,7 +58,7 @@ const AdminPage = () => {
       <Notification message={notification.message} type={notification.type} onClose={() => setNotification({ message: '', type: 'info' })} />
       <div className="admin-content-card">
         {weightliftingSVG}
-        <h1 style={{ textAlign: 'center' }}>ברוך הבא, אדמין!</h1>
+        <h1 style={{ textAlign: 'center' }}>Progress, not perfection.</h1>
         <button className="logout-btn" onClick={handleLogout}>התנתק</button>
         <div className="admin-tabs" dir="rtl">
           {TABS.map(tab => (

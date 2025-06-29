@@ -64,24 +64,84 @@ const InviteTokenManager = () => {
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <h3>כל הטוקנים</h3>
       {loading ? <div>טוען...</div> : (
-        <table style={{ width: '100%', direction: 'rtl' }}>
+        <table style={{ 
+          width: '100%', 
+          direction: 'rtl',
+          borderCollapse: 'collapse',
+          border: '1px solid #ddd'
+        }}>
           <thead>
-            <tr>
-              <th>טוקן</th>
-              <th>אימייל</th>
-              <th>הרשאה</th>
-              <th>שומש?</th>
-              <th>נוצר בתאריך</th>
+            <tr style={{ backgroundColor: '#f5f5f5' }}>
+              <th style={{ 
+                padding: '12px', 
+                border: '1px solid #ddd', 
+                backgroundColor: '#e9e9e9',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>טוקן</th>
+              <th style={{ 
+                padding: '12px', 
+                border: '1px solid #ddd', 
+                backgroundColor: '#e9e9e9',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>אימייל</th>
+              <th style={{ 
+                padding: '12px', 
+                border: '1px solid #ddd', 
+                backgroundColor: '#e9e9e9',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>הרשאה</th>
+              <th style={{ 
+                padding: '12px', 
+                border: '1px solid #ddd', 
+                backgroundColor: '#e9e9e9',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>שומש?</th>
+              <th style={{ 
+                padding: '12px', 
+                border: '1px solid #ddd', 
+                backgroundColor: '#e9e9e9',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>נוצר בתאריך</th>
             </tr>
           </thead>
           <tbody>
             {tokens.map(t => (
-              <tr key={t.id} style={{ background: t.used ? '#eee' : '#fff' }}>
-                <td style={{ fontFamily: 'monospace' }}>{t.token}</td>
-                <td>{t.email || '-'}</td>
-                <td>{t.role}</td>
-                <td>{t.used ? 'כן' : 'לא'}</td>
-                <td>{new Date(t.created_at).toLocaleString()}</td>
+              <tr key={t.id} style={{ 
+                backgroundColor: t.used ? '#f0f8ff' : '#fff',
+                '&:hover': { backgroundColor: '#f9f9f9' }
+              }}>
+                <td style={{ 
+                  fontFamily: 'monospace', 
+                  padding: '10px', 
+                  border: '1px solid #ddd',
+                  color: '#333'
+                }}>{t.token}</td>
+                <td style={{ 
+                  padding: '10px', 
+                  border: '1px solid #ddd',
+                  color: '#333'
+                }}>{t.email || '-'}</td>
+                <td style={{ 
+                  padding: '10px', 
+                  border: '1px solid #ddd',
+                  color: '#333'
+                }}>{t.role}</td>
+                <td style={{ 
+                  padding: '10px', 
+                  border: '1px solid #ddd',
+                  color: t.used ? '#007bff' : '#28a745',
+                  fontWeight: 'bold'
+                }}>{t.used ? 'כן' : 'לא'}</td>
+                <td style={{ 
+                  padding: '10px', 
+                  border: '1px solid #ddd',
+                  color: '#333'
+                }}>{new Date(t.created_at).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

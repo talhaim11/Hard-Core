@@ -156,11 +156,17 @@ const SessionTable = ({ token, showNotification }) => {
         <tbody>
           {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
             sessionsByDay[activeDay].map(session => (
-              <tr key={session.id} className="session-row">
+              <tr key={session.id} className="session-row" style={{
+                backgroundColor: session.session_type === 'blocked' ? '#fff3cd' : 'transparent'
+              }}>
                 <td>{session.date ? new Date(session.date).toLocaleDateString() : ''}</td>
                 <td>{session.start_time && session.end_time ? `${session.start_time} - ${session.end_time}` : ''}</td>
-                <td>{session.title}</td>
-                <td>{session.participants}</td>
+                <td>
+                  {session.session_type === 'blocked' && '🚫 '}
+                  {session.title}
+                  {session.session_type === 'blocked' && ' (זמן חסום)'}
+                </td>
+                <td>{session.session_type === 'blocked' ? 'לא רלוונטי' : session.participants}</td>
                 <td>
                   <button className="edit-btn" onClick={() => handleEdit(session)}>ערוך</button>
                   <button className="delete-btn" onClick={() => handleDelete(session.id)}>מחק</button>
