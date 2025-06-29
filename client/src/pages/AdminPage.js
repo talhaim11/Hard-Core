@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminUserManager from '../components/AdminUserManager';
-import WorkoutBoard from '../components/WorkoutBoard';
 import SessionTable from '../components/SessionTable';
 import Notification from '../components/Notification';
 import AdminStats from '../components/AdminStats';
@@ -90,7 +89,6 @@ const AdminPage = () => {
             <div className="admin-section" style={{ textAlign: 'right' }}>
               <h2>לוח מפגשים</h2>
               {token && <SessionTable token={token} showNotification={showNotification} />}
-              <WorkoutBoard token={token} />
             </div>
           )}
           {activeTab === 'tokens' && (

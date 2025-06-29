@@ -341,14 +341,7 @@ def get_session_details(session_id):
         ]
     return jsonify(users)
 
-@app.route('/sessions/<int:session_id>', methods=['DELETE'])
-@token_required
-def cancel_registration(current_user, session_id):
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-        c.execute('DELETE FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
-        conn.commit()
-    return jsonify({'message': 'Registration cancelled successfully'})
+## Removed duplicate DELETE route for /sessions/<int:session_id> to allow admin delete_session to work
  
 # --- Helper for session registration ---
 def _handle_session_registration(current_user, session_id):
