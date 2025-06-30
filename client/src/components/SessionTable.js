@@ -12,7 +12,6 @@ import '../styles/SessionForm.css';
 const SessionTable = ({ token, showNotification }) => {
   // Week picker state
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
-
   // Helper: get all weeks in the current month as [startDate, endDate]
   function getWeeksOfMonth(date) {
     const year = date.getFullYear();
