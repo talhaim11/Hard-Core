@@ -320,7 +320,7 @@ const SessionTable = ({ token, showNotification }) => {
               <ul style={{listStyle:'none',padding:0,margin:0}}>
                 {popupUsers.map(u => (
                   <li key={u.id} style={{padding:'8px 0',borderBottom:'1px solid #eee',fontSize:17}}>
-                    <span style={{color:'#1e90ff',fontWeight:500}}>{u.email}</span>
+                    <span style={{color:'#222',fontWeight:500}}>{u.email || u.name || '---'}</span>
                     {u.role === 'admin' && <span style={{color:'#888',fontSize:13,marginRight:8}}>(מנהל)</span>}
                   </li>
                 ))}
