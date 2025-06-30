@@ -26,33 +26,31 @@ const SessionTable = ({ token, showNotification }) => {
   ];
   // ...existing code...
 
-  // Helper: get all weeks in the current month as [startDate, endDate]
-  function getWeeksOfMonth(date) {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    let weeks = [];
-    let start = new Date(firstDay);
-    // Move start to previous Sunday
-    start.setDate(start.getDate() - start.getDay());
-    while (start <= lastDay) {
-      let end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      weeks.push([new Date(start), new Date(end)]);
-      start.setDate(start.getDate() + 7);
-    }
-    return weeks;
+  // Helper: get current week (Sun-Sat) and next week
+  function getCurrentAndNextWeek(date) {
+    // Find the Sunday of the current week
+    const curr = new Date(date);
+    const day = curr.getDay();
+    const sunday = new Date(curr);
+    sunday.setDate(curr.getDate() - day);
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    // Next week
+    const nextSunday = new Date(sunday);
+    nextSunday.setDate(sunday.getDate() + 7);
+    const nextSaturday = new Date(nextSunday);
+    nextSaturday.setDate(nextSunday.getDate() + 6);
+    return [ [sunday, saturday], [nextSunday, nextSaturday] ];
   }
 
   // --- Week filtering logic (must be after sessions and daysOfWeek are defined) ---
   const today = new Date();
-  const weeksOfMonth = getWeeksOfMonth(today);
+  const weeksToShow = getCurrentAndNextWeek(today);
   // Filter sessions by selected week
   const sessionsInWeek = sessions.filter(session => {
     if (!session.date) return false;
     const d = new Date(session.date);
-    const [weekStart, weekEnd] = weeksOfMonth[selectedWeek];
+    const [weekStart, weekEnd] = weeksToShow[selectedWeek];
     // Only sessions in the selected week
     return d >= weekStart && d <= weekEnd;
   });
@@ -171,10 +169,10 @@ const SessionTable = ({ token, showNotification }) => {
           onChange={e => setSelectedWeek(Number(e.target.value))}
           style={{ fontSize: '16px', padding: '4px 8px', borderRadius: 6 }}
         >
-          {weeksOfMonth.map(([start, end], idx) => (
+          {weeksToShow.map(([start, end], idx) => (
             <option key={idx} value={idx}>
               {`${start.toLocaleDateString()} - ${end.toLocaleDateString()}`}
-              {idx === 0 ? ' (השבוע הנוכחי)' : ''}
+              {idx === 0 ? ' (השבוע הנוכחי)' : ' (שבוע הבא)'}
             </option>
           ))}
         </select>
