@@ -1,30 +1,3 @@
-@app.route('/reset-password', methods=['POST'])
-def reset_password():
-    data = request.json
-    email = data.get('email')
-    token = data.get('token')
-    new_password = data.get('new_password')
-    if not email or not token or not new_password:
-        return jsonify({'error': 'Missing required fields'}), 400
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-        # Check invite token
-        c.execute('SELECT id, used, email FROM invite_token WHERE token = %s', (token,))
-        row = c.fetchone()
-        if not row:
-            return jsonify({'error': 'Invalid token'}), 400
-        if row[2] != email:
-            return jsonify({'error': 'Token does not match email'}), 400
-        # Check user exists
-        c.execute('SELECT id FROM "user" WHERE email = %s', (email,))
-        user_row = c.fetchone()
-        if not user_row:
-            return jsonify({'error': 'User not found'}), 404
-        # Update password
-        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-        c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_row[0]))
-        conn.commit()
-    return jsonify({'message': 'Password reset successful'})
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -900,6 +873,35 @@ def handle_blocked_session_conflicts(date, start_time, end_time, session_type):
             }
     
     return None
+
+# Place this after app = Flask(__name__) and all configuration
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json
+    email = data.get('email')
+    token = data.get('token')
+    new_password = data.get('new_password')
+    if not email or not token or not new_password:
+        return jsonify({'error': 'Missing required fields'}), 400
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Check invite token
+        c.execute('SELECT id, used, email FROM invite_token WHERE token = %s', (token,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'Invalid token'}), 400
+        if row[2] != email:
+            return jsonify({'error': 'Token does not match email'}), 400
+        # Check user exists
+        c.execute('SELECT id FROM "user" WHERE email = %s', (email,))
+        user_row = c.fetchone()
+        if not user_row:
+            return jsonify({'error': 'User not found'}), 404
+        # Update password
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_row[0]))
+        conn.commit()
+    return jsonify({'message': 'Password reset successful'})
 
 if __name__ == "__main__":
     from os import environ
