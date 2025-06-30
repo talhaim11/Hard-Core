@@ -10,6 +10,52 @@ import '../styles/AdminPage.css';
 import '../styles/SessionForm.css';
 
 const SessionTable = ({ token, showNotification }) => {
+  // Week picker state
+  const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
+
+  // Helper: get all weeks in the current month as [startDate, endDate]
+  function getWeeksOfMonth(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    let weeks = [];
+    let start = new Date(firstDay);
+    // Move start to previous Sunday
+    start.setDate(start.getDate() - start.getDay());
+    while (start <= lastDay) {
+      let end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      weeks.push([new Date(start), new Date(end)]);
+      start.setDate(start.getDate() + 7);
+    }
+    return weeks;
+  }
+
+  const today = new Date();
+  const weeksOfMonth = getWeeksOfMonth(today);
+
+  // Filter sessions by selected week
+  const sessionsInWeek = sessions.filter(session => {
+    if (!session.date) return false;
+    const d = new Date(session.date);
+    const [weekStart, weekEnd] = weeksOfMonth[selectedWeek];
+    // Only sessions in the selected week
+    return d >= weekStart && d <= weekEnd;
+  });
+
+  // Group filtered sessions by day of week
+  const sessionsByDay = daysOfWeek.reduce((acc, day) => {
+    acc[day.key] = [];
+    return acc;
+  }, {});
+  sessionsInWeek.forEach(session => {
+    if (session.date) {
+      const d = new Date(session.date);
+      const dayIdx = d.getDay();
+      if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
+    }
+  });
   const [sessions, setSessions] = useState([]);
   const [activeDay, setActiveDay] = useState(new Date().getDay()); // 0=Sunday, 1=Monday, ...
   // Hebrew days of week, starting from Sunday
@@ -23,19 +69,6 @@ const SessionTable = ({ token, showNotification }) => {
     { key: 6, label: 'שבת' },
   ];
 
-  // Group sessions by day of week
-  const sessionsByDay = daysOfWeek.reduce((acc, day) => {
-    acc[day.key] = [];
-    return acc;
-  }, {});
-  sessions.forEach(session => {
-    if (session.date) {
-      const d = new Date(session.date);
-      // JS: 0=Sunday, 6=Saturday
-      const dayIdx = d.getDay();
-      if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
-    }
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // session object or null
@@ -130,6 +163,21 @@ const SessionTable = ({ token, showNotification }) => {
           onCancel={() => { setShowForm(false); setEditing(null); }}
         />
       )}
+      {/* Week picker */}
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+        <select
+          value={selectedWeek}
+          onChange={e => setSelectedWeek(Number(e.target.value))}
+          style={{ fontSize: '16px', padding: '4px 8px', borderRadius: 6 }}
+        >
+          {weeksOfMonth.map(([start, end], idx) => (
+            <option key={idx} value={idx}>
+              {`${start.toLocaleDateString()} - ${end.toLocaleDateString()}`}
+              {idx === 0 ? ' (השבוע הנוכחי)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
       {/* Day-of-week tabs */}
       <div className="day-tabs" style={{ 
         display: 'flex', 
@@ -175,17 +223,17 @@ const SessionTable = ({ token, showNotification }) => {
           {sessionsByDay[activeDay] && sessionsByDay[activeDay].length > 0 ? (
             sessionsByDay[activeDay].map(session => (
               <tr key={session.id} className="session-row" style={{
-                backgroundColor: session.session_type === 'blocked' ? '#fff3e0' : 'transparent',
-                color: session.session_type === 'blocked' ? '#e65100' : '#333'
+                backgroundColor: (session.session_type === 'blocked') ? '#fff3e0' : 'transparent',
+                color: (session.session_type === 'blocked') ? '#e65100' : '#333'
               }}>
                 <td>{session.date ? new Date(session.date).toLocaleDateString() : ''}</td>
                 <td>{session.start_time && session.end_time ? `${session.start_time} - ${session.end_time}` : ''}</td>
                 <td>
-                  {session.session_type === 'blocked' && '🚫 '}
+                  {(session.session_type === 'blocked') && '🚫 '}
                   {session.title}
-                  {session.session_type === 'blocked' && ' (זמן חסום)'}
+                  {(session.session_type === 'blocked') && ' (זמן חסום)'}
                 </td>
-                <td>{session.session_type === 'blocked' ? 'לא רלוונטי' : session.participants}</td>
+                <td>{(session.session_type === 'blocked') ? 'לא רלוונטי' : session.participants}</td>
                 <td>
                   <button className="edit-btn" onClick={() => handleEdit(session)}>ערוך</button>
                   <button className="delete-btn" onClick={() => handleDelete(session.id)}>מחק</button>
