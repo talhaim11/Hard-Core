@@ -44,7 +44,7 @@ export default function AdminPanel() {
   // Debug: log users and filteredUsers
   console.log('All users:', users);
   const filteredUsers = users.filter(u =>
-    u.email && u.email.toLowerCase().includes(search.toLowerCase()) ||
+    (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
     (u.role && u.role.toLowerCase().includes(search.toLowerCase()))
   );
   console.log('Filtered users:', filteredUsers);
