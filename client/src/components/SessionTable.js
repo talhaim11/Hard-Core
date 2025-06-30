@@ -12,6 +12,18 @@ import '../styles/SessionForm.css';
 const SessionTable = ({ token, showNotification }) => {
   // Week picker state
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
+  const [sessions, setSessions] = useState([]);
+  const [activeDay, setActiveDay] = useState(new Date().getDay()); // 0=Sunday, 1=Monday, ...
+  // Hebrew days of week, starting from Sunday
+  const daysOfWeek = [
+    { key: 0, label: 'ראשון' },
+    { key: 1, label: 'שני' },
+    { key: 2, label: 'שלישי' },
+    { key: 3, label: 'רביעי' },
+    { key: 4, label: 'חמישי' },
+    { key: 5, label: 'שישי' },
+    { key: 6, label: 'שבת' },
+  ];
   // ...existing code...
 
   // Helper: get all weeks in the current month as [startDate, endDate]
@@ -33,9 +45,9 @@ const SessionTable = ({ token, showNotification }) => {
     return weeks;
   }
 
+  // --- Week filtering logic (must be after sessions and daysOfWeek are defined) ---
   const today = new Date();
   const weeksOfMonth = getWeeksOfMonth(today);
-
   // Filter sessions by selected week
   const sessionsInWeek = sessions.filter(session => {
     if (!session.date) return false;
@@ -44,7 +56,6 @@ const SessionTable = ({ token, showNotification }) => {
     // Only sessions in the selected week
     return d >= weekStart && d <= weekEnd;
   });
-
   // Group filtered sessions by day of week
   const sessionsByDay = daysOfWeek.reduce((acc, day) => {
     acc[day.key] = [];
@@ -57,18 +68,7 @@ const SessionTable = ({ token, showNotification }) => {
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
-  const [sessions, setSessions] = useState([]);
-  const [activeDay, setActiveDay] = useState(new Date().getDay()); // 0=Sunday, 1=Monday, ...
-  // Hebrew days of week, starting from Sunday
-  const daysOfWeek = [
-    { key: 0, label: 'ראשון' },
-    { key: 1, label: 'שני' },
-    { key: 2, label: 'שלישי' },
-    { key: 3, label: 'רביעי' },
-    { key: 4, label: 'חמישי' },
-    { key: 5, label: 'שישי' },
-    { key: 6, label: 'שבת' },
-  ];
+  // ...existing code...
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
