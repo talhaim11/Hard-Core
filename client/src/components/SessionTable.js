@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {
   fetchSessions,
@@ -10,6 +11,34 @@ import '../styles/AdminPage.css';
 import '../styles/SessionForm.css';
 
 const SessionTable = ({ token, showNotification }) => {
+  const [showUsersPopup, setShowUsersPopup] = useState(false);
+  const [popupUsers, setPopupUsers] = useState([]);
+  const [popupLoading, setPopupLoading] = useState(false);
+  const [popupError, setPopupError] = useState("");
+  const [popupSessionTitle, setPopupSessionTitle] = useState("");
+
+  const handleShowUsers = async (session) => {
+    setShowUsersPopup(true);
+    setPopupUsers([]);
+    setPopupLoading(true);
+    setPopupError("");
+    setPopupSessionTitle(session.title || "");
+    try {
+      const res = await axios.get(`${process.env.REACT_APP_API_BASE || ''}/sessions/${session.id}/users`);
+      setPopupUsers(res.data.users || []);
+    } catch (err) {
+      setPopupError("שגיאה בטעינת רשימת הנרשמים");
+    } finally {
+      setPopupLoading(false);
+    }
+  };
+
+  const handleClosePopup = () => {
+    setShowUsersPopup(false);
+    setPopupUsers([]);
+    setPopupError("");
+    setPopupSessionTitle("");
+  };
   // Week picker state
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
   const [sessions, setSessions] = useState([]);
@@ -232,7 +261,21 @@ const SessionTable = ({ token, showNotification }) => {
                   {session.title}
                   {(session.session_type === 'blocked') && ' (זמן חסום)'}
                 </td>
-                <td>{(session.session_type === 'blocked') ? 'לא רלוונטי' : session.participants}</td>
+                <td>
+                  {(session.session_type === 'blocked') ? 'לא רלוונטי' : (
+                    <span
+                      style={{
+                        color: session.participants > 0 ? '#1e90ff' : '#333',
+                        textDecoration: session.participants > 0 ? 'underline' : 'none',
+                        cursor: session.participants > 0 ? 'pointer' : 'default',
+                        fontWeight: 500
+                      }}
+                      onClick={() => session.participants > 0 && handleShowUsers(session)}
+                    >
+                      {session.participants}
+                    </span>
+                  )}
+                </td>
                 <td>
                   <button className="edit-btn" onClick={() => handleEdit(session)}>ערוך</button>
                   <button className="delete-btn" onClick={() => handleDelete(session.id)}>מחק</button>
@@ -244,6 +287,48 @@ const SessionTable = ({ token, showNotification }) => {
           )}
         </tbody>
       </table>
+      {/* Users popup */}
+      {showUsersPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 12,
+            padding: 32,
+            minWidth: 320,
+            maxWidth: 400,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+            textAlign: 'center',
+            fontFamily: 'inherit',
+            position: 'relative'
+          }}>
+            <button onClick={handleClosePopup} style={{position:'absolute',top:12,right:16,fontSize:20,background:'none',border:'none',cursor:'pointer',color:'#1e90ff'}}>×</button>
+            <h2 style={{marginBottom:16}}>נרשמים לאימון</h2>
+            <div style={{fontWeight:600,marginBottom:8}}>{popupSessionTitle}</div>
+            {popupLoading ? (
+              <div>טוען...</div>
+            ) : popupError ? (
+              <div style={{color:'red'}}>{popupError}</div>
+            ) : popupUsers.length === 0 ? (
+              <div>אין נרשמים</div>
+            ) : (
+              <ul style={{listStyle:'none',padding:0,margin:0}}>
+                {popupUsers.map(u => (
+                  <li key={u.id} style={{padding:'8px 0',borderBottom:'1px solid #eee',fontSize:17}}>
+                    <span style={{color:'#1e90ff',fontWeight:500}}>{u.email}</span>
+                    {u.role === 'admin' && <span style={{color:'#888',fontSize:13,marginRight:8}}>(מנהל)</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

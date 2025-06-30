@@ -88,7 +88,7 @@ export default function ResetPassword() {
         </form>
         {message && <div style={{color: message.includes("בהצלחה") ? "green" : "red", marginTop: 12}}>{message}</div>}
         <div style={{textAlign: 'center', marginTop: '1rem'}}>
-          <a href="/login">חזרה להתחברות</a>
+          <a href="/">חזרה להתחברות</a>
         </div>
       </div>
     </div>
