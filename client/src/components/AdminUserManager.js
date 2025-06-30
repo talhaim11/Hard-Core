@@ -13,7 +13,8 @@ export default function AdminPanel() {
       const res = await axios.get(`${API_BASE}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(res.data.users || []);
+      // The backend returns a plain array, not { users: [...] }
+      setUsers(Array.isArray(res.data) ? res.data : (res.data.users || []));
     } catch (err) {
       console.error("Failed to fetch users", err);
     }
