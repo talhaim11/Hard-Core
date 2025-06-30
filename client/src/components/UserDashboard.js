@@ -14,6 +14,8 @@ const daysOfWeek = [
 ];
 
 const UserDashboard = () => {
+  // Week picker state
+  const [selectedWeek, setSelectedWeek] = useState(0); // 0 = current week
   const [sessions, setSessions] = useState([]);
   const [profile, setProfile] = useState(null);
   const [allSessions, setAllSessions] = useState([]);
@@ -26,12 +28,36 @@ const UserDashboard = () => {
   const [achievements, setAchievements] = useState([]);
   const [activeDay, setActiveDay] = useState(new Date().getDay());
 
-  // Group allSessions by day of week
+  // Helper: get current week (Sun-Sat) and next week
+  function getCurrentAndNextWeek(date) {
+    const curr = new Date(date);
+    const day = curr.getDay();
+    const sunday = new Date(curr);
+    sunday.setDate(curr.getDate() - day);
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    const nextSunday = new Date(sunday);
+    nextSunday.setDate(sunday.getDate() + 7);
+    const nextSaturday = new Date(nextSunday);
+    nextSaturday.setDate(nextSunday.getDate() + 6);
+    return [ [sunday, saturday], [nextSunday, nextSaturday] ];
+  }
+
+  const today = new Date();
+  const weeksToShow = getCurrentAndNextWeek(today);
+  // Filter allSessions by selected week
+  const sessionsInWeek = allSessions.filter(session => {
+    if (!session.date) return false;
+    const d = new Date(session.date);
+    const [weekStart, weekEnd] = weeksToShow[selectedWeek];
+    return d >= weekStart && d <= weekEnd;
+  });
+  // Group filtered sessions by day of week
   const sessionsByDay = daysOfWeek.reduce((acc, day) => {
     acc[day.key] = [];
     return acc;
   }, {});
-  allSessions.forEach(session => {
+  sessionsInWeek.forEach(session => {
     if (session.date) {
       const d = new Date(session.date);
       const dayIdx = d.getDay();
@@ -206,6 +232,21 @@ const UserDashboard = () => {
           onChange={e => setFilter(e.target.value)}
           style={{marginBottom:8}}
         />
+        {/* Week picker */}
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+          <select
+            value={selectedWeek}
+            onChange={e => setSelectedWeek(Number(e.target.value))}
+            style={{ fontSize: '16px', padding: '4px 8px', borderRadius: 6 }}
+          >
+            {weeksToShow.map(([start, end], idx) => (
+              <option key={idx} value={idx}>
+                {`${start.toLocaleDateString()} - ${end.toLocaleDateString()}`}
+                {idx === 0 ? ' (השבוע הנוכחי)' : ' (שבוע הבא)'}
+              </option>
+            ))}
+          </select>
+        </div>
         {/* Day-of-week tabs */}
         <div className="day-tabs" style={{ 
           display: 'flex', 
