@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import AdminPage from "./pages/AdminPage";
 import UserPage from "./pages/UserPage";
 import Register from "./pages/Register"; // Import Register page
+import ResetPassword from "./pages/ResetPassword";
 
 // import WorkoutBoard from './components/WorkoutBoard'; // Disabled: unused import
 
@@ -28,18 +29,17 @@ function App() {
   }, []);
 
    return ( 
-    
     <Router>
       <Routes>
         <Route path="/" element={<Login setRole={setRole} />} />
-        <Route path="/register" element={<Register />} /> {/* Register route added */}
+        <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/admin"
           element={
             role === "admin" ? <AdminPage /> : role === null ? null : <Navigate to="/" />
           }
         />
-
         <Route
           path="/user"
           element={

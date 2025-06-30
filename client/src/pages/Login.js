@@ -69,6 +69,9 @@ function Login({ setRole }) {
           <span>New user? </span>
           <a href="/register">Register here</a>
         </div>
+        <div style={{textAlign: 'center', marginTop: '0.5rem'}}>
+          <a href="/reset-password">Forgot password?</a>
+        </div>
       </div>
     </div>
     );
