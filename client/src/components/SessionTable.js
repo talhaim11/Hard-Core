@@ -23,10 +23,15 @@ const SessionTable = ({ token, showNotification }) => {
     setPopupLoading(true);
     setPopupError("");
     setPopupSessionTitle(session.title || "");
+    console.log('[DEBUG] handleShowUsers called for session:', session);
     try {
-      const res = await axios.get(`${process.env.REACT_APP_API_BASE || ''}/sessions/${session.id}/users`);
+      const url = `${process.env.REACT_APP_API_BASE || ''}/sessions/${session.id}/users`;
+      console.log('[DEBUG] Fetching users from:', url);
+      const res = await axios.get(url);
+      console.log('[DEBUG] Response from /sessions/:id/users:', res.data);
       setPopupUsers(res.data.users || []);
     } catch (err) {
+      console.error('[DEBUG] Error fetching users:', err);
       setPopupError("שגיאה בטעינת רשימת הנרשמים");
     } finally {
       setPopupLoading(false);
