@@ -1,28 +1,4 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 
-import psycopg2
-import bcrypt
-import jwt
-# ...existing code...
-
-# Place this route after app and all configuration
-# ...existing code...
-@app.route('/invite-tokens/cleanup', methods=['POST'])
-@token_required
-def cleanup_invite_tokens(current_user):
-    if current_user['role'] != 'admin':
-        return jsonify({'error': 'Unauthorized'}), 403
-    with psycopg2.connect(POSTGRES_URL) as conn:
-        c = conn.cursor()
-        # Delete all tokens that are marked as used and have a matching user in the user table
-        c.execute('''
-            DELETE FROM invite_token 
-            WHERE used = TRUE AND email IS NOT NULL AND email IN (SELECT email FROM "user")
-        ''')
-        conn.commit()
-    return jsonify({'message': 'Cleaned up used tokens for deleted users.'})
-from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import psycopg2
@@ -33,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 from functools import wraps
-from flask import request, jsonify
+from flask import Flask, request, jsonify
 import jwt
 
 
@@ -415,6 +391,22 @@ def create_session(payload):
         response['message'] += f', deleted {len(deleted_sessions)} overlapping sessions'
 
     return jsonify(response), 201
+
+
+@app.route('/invite-tokens/cleanup', methods=['POST'])
+@token_required
+def cleanup_invite_tokens(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Delete all tokens that are marked as used and have a matching user in the user table
+        c.execute('''
+            DELETE FROM invite_token 
+            WHERE used = TRUE AND email IS NOT NULL AND email IN (SELECT email FROM "user")
+        ''')
+        conn.commit()
+    return jsonify({'message': 'Cleaned up used tokens for deleted users.'})
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
