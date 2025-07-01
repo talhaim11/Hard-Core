@@ -178,8 +178,6 @@ const SessionTable = ({ token, showNotification }) => {
     }
   };
 
-  if (loading) return <div>טוען מפגשים...</div>;
-  if (error) return <div className="error-msg">{error}</div>;
 
   // --- Bulk Delete State ---
   const [bulkStartDate, setBulkStartDate] = useState("");
@@ -224,6 +222,9 @@ const SessionTable = ({ token, showNotification }) => {
       setBulkLoading(false);
     }
   };
+
+  if (loading) return <div>טוען מפגשים...</div>;
+  if (error) return <div className="error-msg">{error}</div>;
 
   return (
     <div className="session-table-container">
