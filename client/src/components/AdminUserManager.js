@@ -53,7 +53,6 @@ export default function AdminPanel() {
     <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
       <div style={{ color: '#1e90ff', marginBottom: 12 }}>
-        משתמשים חדשים מתווספים דרך טוקן הזמנה בלבד (ראה לשונית "ניהול טוקנים")
       </div>
       <h3 className="user-list-label">משתמשים רשומים:</h3>
       <input
