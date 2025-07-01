@@ -533,6 +533,7 @@ def debug_bcrypt():
 
 @app.route('/sessions/<int:session_id>/users', methods=['GET'])
 def get_session_users(session_id):
+    print(f"[DEBUG] get_session_users called for session_id={session_id}")
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         c.execute('''
