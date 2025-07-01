@@ -541,10 +541,13 @@ def get_session_users(session_id):
             JOIN user_session us ON u.id = us.user_id
             WHERE us.session_id = %s
         ''', (session_id,))
+        rows = c.fetchall()
+        print(f"[DEBUG] Session {session_id} users query result: {rows}")
         users = [
             {'id': row[0], 'email': row[1], 'role': row[2]}
-            for row in c.fetchall()
+            for row in rows
         ]
+        print(f"[DEBUG] Session {session_id} users parsed: {users}")
     return jsonify({'users': users})
 
 
