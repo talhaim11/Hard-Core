@@ -181,9 +181,70 @@ const SessionTable = ({ token, showNotification }) => {
   if (loading) return <div>טוען מפגשים...</div>;
   if (error) return <div className="error-msg">{error}</div>;
 
+  // --- Bulk Delete State ---
+  const [bulkStartDate, setBulkStartDate] = useState("");
+  const [bulkEndDate, setBulkEndDate] = useState("");
+  const [bulkType, setBulkType] = useState("");
+  const [bulkTrainer, setBulkTrainer] = useState("");
+  const [bulkSeries, setBulkSeries] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const { deleteSessionsBulk, deleteOldSessions } = require("./api");
+
+  // Bulk delete by range/filter
+  const handleBulkDelete = async () => {
+    setBulkLoading(true);
+    try {
+      const criteria = {};
+      if (bulkStartDate) criteria.start_date = bulkStartDate;
+      if (bulkEndDate) criteria.end_date = bulkEndDate;
+      if (bulkType) criteria.session_type = bulkType;
+      if (bulkTrainer) criteria.trainer = bulkTrainer;
+      if (bulkSeries) criteria.series = bulkSeries;
+      const res = await deleteSessionsBulk(criteria);
+      showNotification(res.message, 'success');
+      loadSessions();
+    } catch (e) {
+      showNotification('מחיקת מפגשים נכשלה', 'error');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Delete all sessions older than 6 months
+  const handleDeleteOld = async () => {
+    setBulkLoading(true);
+    try {
+      const res = await deleteOldSessions();
+      showNotification(res.message, 'success');
+      loadSessions();
+    } catch (e) {
+      showNotification('מחיקת מפגשים ישנים נכשלה', 'error');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <div className="session-table-container">
       <button className="create-session-btn" onClick={() => { setFormMode('create'); setEditing(null); setShowForm(true); }}>הוסף מפגש</button>
+      {/* Bulk Delete Controls */}
+      <div style={{margin: '1rem 0', padding: '1rem', border: '1px solid #eee', borderRadius: 8, background: '#fafbfc'}}>
+        <div style={{fontWeight:600, marginBottom:8}}>מחיקת מפגשים מרובה</div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <label>מתאריך: <input type="date" value={bulkStartDate} onChange={e=>setBulkStartDate(e.target.value)} /></label>
+          <label>עד תאריך: <input type="date" value={bulkEndDate} onChange={e=>setBulkEndDate(e.target.value)} /></label>
+          <label>סוג: <input type="text" placeholder="סוג אימון" value={bulkType} onChange={e=>setBulkType(e.target.value)} style={{width:90}} /></label>
+          <label>מאמן: <input type="text" placeholder="מאמן" value={bulkTrainer} onChange={e=>setBulkTrainer(e.target.value)} style={{width:90}} /></label>
+          <label>סדרה: <input type="text" placeholder="סדרה" value={bulkSeries} onChange={e=>setBulkSeries(e.target.value)} style={{width:90}} /></label>
+          <button onClick={handleBulkDelete} disabled={bulkLoading} style={{background:'#e53935',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
+            {bulkLoading ? 'מוחק...' : 'מחק לפי טווח/פילטר'}
+          </button>
+          <button onClick={handleDeleteOld} disabled={bulkLoading} style={{background:'#ff9800',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
+            {bulkLoading ? 'מוחק...' : 'מחק מפגשים ישנים (חצי שנה+)'}
+          </button>
+        </div>
+      </div>
       {showForm && (
         <SessionForm
           initial={formMode === 'edit' ? editing : null}

@@ -616,6 +616,73 @@ def update_session(current_user, session_id):
         return jsonify({'error': f'Error updating session: {str(e)}'}), 500
 
 
+
+# --- BULK SESSION DELETION ENDPOINTS ---
+from dateutil.relativedelta import relativedelta
+
+@app.route('/sessions/bulk', methods=['DELETE'])
+@token_required
+def delete_sessions_bulk(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json() or {}
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    trainer = data.get('trainer')
+    session_type = data.get('session_type')
+    series = data.get('series')
+    filters = []
+    params = []
+    if start_date:
+        filters.append('date >= %s')
+        params.append(start_date)
+    if end_date:
+        filters.append('date <= %s')
+        params.append(end_date)
+    if trainer:
+        filters.append('trainer = %s')
+        params.append(trainer)
+    if session_type:
+        filters.append('session_type = %s')
+        params.append(session_type)
+    if series:
+        filters.append('series = %s')
+        params.append(series)
+    where_clause = ('WHERE ' + ' AND '.join(filters)) if filters else ''
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Get session ids to delete
+        c.execute(f'SELECT id FROM session {where_clause}', tuple(params))
+        session_ids = [row[0] for row in c.fetchall()]
+        if not session_ids:
+            return jsonify({'message': 'No sessions found for deletion', 'deleted_count': 0})
+        # Delete user_session links
+        c.execute('DELETE FROM user_session WHERE session_id = ANY(%s)', (session_ids,))
+        # Delete sessions
+        c.execute('DELETE FROM session WHERE id = ANY(%s)', (session_ids,))
+        deleted_count = c.rowcount
+        conn.commit()
+    return jsonify({'message': f'Deleted {deleted_count} sessions', 'deleted_count': deleted_count})
+
+@app.route('/sessions/past', methods=['DELETE'])
+@token_required
+def delete_old_sessions(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    # Delete sessions older than 6 months from today
+    cutoff = (datetime.date.today() - relativedelta(months=6)).isoformat()
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id FROM session WHERE date < %s', (cutoff,))
+        session_ids = [row[0] for row in c.fetchall()]
+        if not session_ids:
+            return jsonify({'message': 'No old sessions found', 'deleted_count': 0})
+        c.execute('DELETE FROM user_session WHERE session_id = ANY(%s)', (session_ids,))
+        c.execute('DELETE FROM session WHERE id = ANY(%s)', (session_ids,))
+        deleted_count = c.rowcount
+        conn.commit()
+    return jsonify({'message': f'Deleted {deleted_count} old sessions', 'deleted_count': deleted_count})
+
 @app.route('/sessions/<int:session_id>', methods=['DELETE'])
 @token_required
 def delete_session(current_user, session_id):

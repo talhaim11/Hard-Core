@@ -64,6 +64,10 @@ export const cancelSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
 export const createSession = (sessionData) => apiPost('/sessions', sessionData);
 export const updateSession = (sessionId, sessionData) => apiPut(`/sessions/${sessionId}`, sessionData);
 export const deleteSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
+// Bulk delete sessions by range/filter
+export const deleteSessionsBulk = (criteria) => api.delete('/sessions/bulk', { data: criteria }).then(res => res.data);
+// Delete all sessions older than 6 months
+export const deleteOldSessions = () => api.delete('/sessions/past').then(res => res.data);
 export const login = (email, password, token) => apiPost('/login', { email, password, token });
 export const logout = () => apiPost('/logout');
 export const getUserProfile = () => apiGet('/profile');
