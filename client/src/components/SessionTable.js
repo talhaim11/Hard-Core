@@ -25,7 +25,9 @@ const SessionTable = ({ token, showNotification }) => {
     setPopupSessionTitle(session.title || "");
     console.log('[DEBUG] handleShowUsers called for session:', session);
     try {
-      const url = `${process.env.REACT_APP_API_BASE || ''}/sessions/${session.id}/users`;
+      // Always use the correct API base from config.js
+      const { API_BASE } = require('../config');
+      const url = `${API_BASE}/sessions/${session.id}/users`;
       console.log('[DEBUG] Fetching users from:', url);
       const res = await axios.get(url);
       console.log('[DEBUG] Response from /sessions/:id/users:', res.data);
