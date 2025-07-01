@@ -186,6 +186,15 @@ const SessionTable = ({ token, showNotification }) => {
   const [bulkTrainer, setBulkTrainer] = useState("");
   const [bulkSeries, setBulkSeries] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  // Quick add session state
+  const [quickAddDay, setQuickAddDay] = useState(null); // day index (0-6) or null
+  const [quickAddTitle, setQuickAddTitle] = useState("");
+  const [quickAddStart, setQuickAddStart] = useState("");
+  const [quickAddEnd, setQuickAddEnd] = useState("");
+  const [quickAddType, setQuickAddType] = useState("regular");
+  const [quickAddLoading, setQuickAddLoading] = useState(false);
 
   const { deleteSessionsBulk, deleteOldSessions } = require("./api");
 
@@ -223,28 +232,69 @@ const SessionTable = ({ token, showNotification }) => {
     }
   };
 
+  // Quick add session for a specific day
+  const handleQuickAdd = async (dayIdx) => {
+    setQuickAddLoading(true);
+    try {
+      const week = weeksToShow[selectedWeek];
+      const date = new Date(week[0]);
+      date.setDate(date.getDate() + dayIdx);
+      const dateStr = date.toISOString().slice(0, 10);
+      await handleCreate({
+        title: quickAddTitle,
+        dates: [dateStr],
+        start_time: quickAddStart,
+        end_time: quickAddEnd,
+        session_type: quickAddType
+      });
+      setQuickAddDay(null);
+      setQuickAddTitle("");
+      setQuickAddStart("");
+      setQuickAddEnd("");
+      setQuickAddType("regular");
+    } catch (e) {
+      showNotification('יצירת מפגש נכשלה', 'error');
+    } finally {
+      setQuickAddLoading(false);
+    }
+  };
+
   if (loading) return <div>טוען מפגשים...</div>;
   if (error) return <div className="error-msg">{error}</div>;
 
   return (
     <div className="session-table-container">
       <button className="create-session-btn" onClick={() => { setFormMode('create'); setEditing(null); setShowForm(true); }}>הוסף מפגש</button>
-      {/* Bulk Delete Controls */}
-      <div style={{margin: '1rem 0', padding: '1rem', border: '1px solid #eee', borderRadius: 8, background: '#fafbfc'}}>
-        <div style={{fontWeight:600, marginBottom:8}}>מחיקת מפגשים מרובה</div>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-          <label>מתאריך: <input type="date" value={bulkStartDate} onChange={e=>setBulkStartDate(e.target.value)} /></label>
-          <label>עד תאריך: <input type="date" value={bulkEndDate} onChange={e=>setBulkEndDate(e.target.value)} /></label>
-          <label>סוג: <input type="text" placeholder="סוג אימון" value={bulkType} onChange={e=>setBulkType(e.target.value)} style={{width:90}} /></label>
-          <label>מאמן: <input type="text" placeholder="מאמן" value={bulkTrainer} onChange={e=>setBulkTrainer(e.target.value)} style={{width:90}} /></label>
-          <label>סדרה: <input type="text" placeholder="סדרה" value={bulkSeries} onChange={e=>setBulkSeries(e.target.value)} style={{width:90}} /></label>
-          <button onClick={handleBulkDelete} disabled={bulkLoading} style={{background:'#e53935',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
-            {bulkLoading ? 'מוחק...' : 'מחק לפי טווח/פילטר'}
-          </button>
-          <button onClick={handleDeleteOld} disabled={bulkLoading} style={{background:'#ff9800',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
-            {bulkLoading ? 'מוחק...' : 'מחק מפגשים ישנים (חצי שנה+)'}
-          </button>
-        </div>
+      {/* Bulk Delete Controls - Collapsible */}
+      <div style={{margin: '1rem 0', padding: '0.5rem', border: '1px solid #eee', borderRadius: 8, background: '#fafbfc', maxWidth: 600}}>
+        <button onClick={()=>setBulkOpen(!bulkOpen)} style={{background:'#e53935',color:'#fff',border:'none',padding:'6px 16px',borderRadius:6,cursor:'pointer',fontWeight:600,marginBottom:bulkOpen?8:0}}>
+          {bulkOpen ? 'הסתר מחיקת מפגשים מרובה' : 'הצג מחיקת מפגשים מרובה'}
+        </button>
+        {bulkOpen && (
+          <form style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginTop:8}} onSubmit={e=>{e.preventDefault();handleBulkDelete();}}>
+            <label style={{display:'flex',flexDirection:'column',fontWeight:500}}>מתאריך
+              <input type="date" value={bulkStartDate} onChange={e=>setBulkStartDate(e.target.value)} style={{minWidth:110}} />
+            </label>
+            <label style={{display:'flex',flexDirection:'column',fontWeight:500}}>עד תאריך
+              <input type="date" value={bulkEndDate} onChange={e=>setBulkEndDate(e.target.value)} style={{minWidth:110}} />
+            </label>
+            <label style={{display:'flex',flexDirection:'column',fontWeight:500}}>סוג
+              <input type="text" placeholder="סוג אימון" value={bulkType} onChange={e=>setBulkType(e.target.value)} style={{minWidth:90}} />
+            </label>
+            <label style={{display:'flex',flexDirection:'column',fontWeight:500}}>מאמן
+              <input type="text" placeholder="מאמן" value={bulkTrainer} onChange={e=>setBulkTrainer(e.target.value)} style={{minWidth:90}} />
+            </label>
+            <label style={{display:'flex',flexDirection:'column',fontWeight:500}}>סדרה
+              <input type="text" placeholder="סדרה" value={bulkSeries} onChange={e=>setBulkSeries(e.target.value)} style={{minWidth:90}} />
+            </label>
+            <button type="submit" disabled={bulkLoading} style={{background:'#e53935',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
+              {bulkLoading ? 'מוחק...' : 'מחק לפי טווח/פילטר'}
+            </button>
+            <button type="button" onClick={handleDeleteOld} disabled={bulkLoading} style={{background:'#ff9800',color:'#fff',border:'none',padding:'8px 16px',borderRadius:6,cursor:'pointer',fontWeight:600}}>
+              {bulkLoading ? 'מוחק...' : 'מחק מפגשים ישנים (חצי שנה+)'}
+            </button>
+          </form>
+        )}
       </div>
       {showForm && (
         <SessionForm
@@ -268,7 +318,7 @@ const SessionTable = ({ token, showNotification }) => {
           ))}
         </select>
       </div>
-      {/* Day-of-week tabs */}
+      {/* Day-of-week tabs with quick add */}
       <div className="day-tabs" style={{ 
         display: 'flex', 
         justifyContent: 'center', 
@@ -279,24 +329,48 @@ const SessionTable = ({ token, showNotification }) => {
         overflowX: 'auto'
       }}>
         {daysOfWeek.map(day => (
-          <button
-            key={day.key}
-            className={`day-tab-btn${activeDay === day.key ? ' active' : ''}`}
-            style={{ 
-              padding: '6px 8px', 
-              borderRadius: 6, 
-              border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', 
-              background: activeDay === day.key ? '#1e90ff' : '#fff', 
-              color: activeDay === day.key ? '#fff' : '#222', 
-              cursor: 'pointer',
-              fontSize: '14px',
-              minWidth: '60px',
-              whiteSpace: 'nowrap'
-            }}
-            onClick={() => setActiveDay(day.key)}
-          >
-            {day.label}
-          </button>
+          <div key={day.key} style={{display:'flex',flexDirection:'column',alignItems:'center',margin:'0 2px'}}>
+            <button
+              className={`day-tab-btn${activeDay === day.key ? ' active' : ''}`}
+              style={{ 
+                padding: '6px 8px', 
+                borderRadius: 6, 
+                border: activeDay === day.key ? '2px solid #1e90ff' : '1px solid #ccc', 
+                background: activeDay === day.key ? '#1e90ff' : '#fff', 
+                color: activeDay === day.key ? '#fff' : '#222', 
+                cursor: 'pointer',
+                fontSize: '14px',
+                minWidth: '60px',
+                whiteSpace: 'nowrap',
+                marginBottom:2
+              }}
+              onClick={() => setActiveDay(day.key)}
+            >
+              {day.label}
+            </button>
+            <button
+              style={{fontSize:12,padding:'2px 8px',borderRadius:4,background:'#4caf50',color:'#fff',border:'none',cursor:'pointer'}}
+              onClick={()=>setQuickAddDay(day.key)}
+            >הוסף מפגש</button>
+            {/* Quick add form for this day */}
+            {quickAddDay === day.key && (
+              <form style={{background:'#fff',border:'1px solid #eee',borderRadius:8,padding:8,marginTop:4,boxShadow:'0 2px 8px #0001',zIndex:10,minWidth:180}} onSubmit={e=>{e.preventDefault();handleQuickAdd(day.key);}}>
+                <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                  <input placeholder="שם אימון" value={quickAddTitle} onChange={e=>setQuickAddTitle(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
+                  <input type="time" value={quickAddStart} onChange={e=>setQuickAddStart(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
+                  <input type="time" value={quickAddEnd} onChange={e=>setQuickAddEnd(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
+                  <select value={quickAddType} onChange={e=>setQuickAddType(e.target.value)} style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}>
+                    <option value="regular">אימון רגיל</option>
+                    <option value="blocked">זמן חסום</option>
+                  </select>
+                  <div style={{display:'flex',gap:4,marginTop:4}}>
+                    <button type="submit" disabled={quickAddLoading} style={{background:'#4caf50',color:'#fff',border:'none',padding:'4px 10px',borderRadius:4,cursor:'pointer',fontWeight:600}}>{quickAddLoading ? 'שומר...' : 'שמור'}</button>
+                    <button type="button" onClick={()=>setQuickAddDay(null)} style={{background:'#eee',color:'#333',border:'none',padding:'4px 10px',borderRadius:4,cursor:'pointer',fontWeight:600}}>ביטול</button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
         ))}
       </div>
       <table className="session-table">
