@@ -20,7 +20,6 @@ const weightliftingSVG = (
 
 const TABS = [
   { key: 'stats', label: 'סטטיסטיקות' },
-  { key: 'users', label: 'ניהול משתמשים' },
   { key: 'sessions', label: 'לוח מפגשים' },
   { key: 'tokens', label: 'ניהול טוקנים' },
 ];
@@ -79,12 +78,7 @@ const AdminPage = () => {
               <AdminStats />
             </div>
           )}
-          {activeTab === 'users' && (
-            <div className="admin-section" style={{ textAlign: 'right' }}>
-              <h2>ניהול משתמשים</h2>
-              <AdminUserManager />
-            </div>
-          )}
+          {/* Removed ניהול משתמשים tab and content */}
           {activeTab === 'sessions' && (
             <div className="admin-section" style={{ textAlign: 'right' }}>
               <h2>לוח מפגשים</h2>

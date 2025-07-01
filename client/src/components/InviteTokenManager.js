@@ -64,94 +64,126 @@ const InviteTokenManager = () => {
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <h3>כל הטוקנים</h3>
       {loading ? <div>טוען...</div> : (
-        <table style={{ 
-          width: '100%', 
-          direction: 'rtl',
-          borderCollapse: 'collapse',
-          border: '1px solid #ddd',
-          tableLayout: 'fixed',
-          wordBreak: 'break-all'
-        }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f5f5f5' }}>
-              <th style={{ 
-                padding: '12px', 
-                border: '1px solid #ddd', 
-                backgroundColor: '#e9e9e9',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>טוקן</th>
-              <th style={{ 
-                padding: '12px', 
-                border: '1px solid #ddd', 
-                backgroundColor: '#e9e9e9',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>אימייל</th>
-              <th style={{ 
-                padding: '12px', 
-                border: '1px solid #ddd', 
-                backgroundColor: '#e9e9e9',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>הרשאה</th>
-              <th style={{ 
-                padding: '12px', 
-                border: '1px solid #ddd', 
-                backgroundColor: '#e9e9e9',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>שומש?</th>
-              <th style={{ 
-                padding: '12px', 
-                border: '1px solid #ddd', 
-                backgroundColor: '#e9e9e9',
-                color: '#333',
-                fontWeight: 'bold'
-              }}>נוצר בתאריך</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tokens.map(t => (
-              <tr key={t.id} style={{ 
-                backgroundColor: t.used ? '#f0f8ff' : '#fff',
-                '&:hover': { backgroundColor: '#f9f9f9' }
-              }}>
-                <td style={{ 
-                  fontFamily: 'monospace', 
-                  padding: '10px', 
-                  border: '1px solid #ddd',
+        <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 8 }}>
+          <table style={{ 
+            width: '100%', 
+            direction: 'rtl',
+            borderCollapse: 'collapse',
+            tableLayout: 'fixed',
+            wordBreak: 'break-all'
+          }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f5f5f5' }}>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
                   color: '#333',
-                  fontSize: '12px',
-                  maxWidth: '200px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>{t.token}</td>
-                <td style={{ 
-                  padding: '10px', 
-                  border: '1px solid #ddd',
-                  color: '#333'
-                }}>{t.email || '-'}</td>
-                <td style={{ 
-                  padding: '10px', 
-                  border: '1px solid #ddd',
-                  color: '#333'
-                }}>{t.role}</td>
-                <td style={{ 
-                  padding: '10px', 
-                  border: '1px solid #ddd',
-                  color: t.used ? '#007bff' : '#28a745',
                   fontWeight: 'bold'
-                }}>{t.used ? 'כן' : 'לא'}</td>
-                <td style={{ 
-                  padding: '10px', 
-                  border: '1px solid #ddd',
-                  color: '#333'
-                }}>{new Date(t.created_at).toLocaleString()}</td>
+                }}>טוקן</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>אימייל</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>הרשאה</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>שומש?</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>נוצר בתאריך</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>מחק משתמש</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tokens.map(t => (
+                <tr key={t.id} style={{ 
+                  backgroundColor: t.used ? '#f0f8ff' : '#fff',
+                  '&:hover': { backgroundColor: '#f9f9f9' }
+                }}>
+                  <td style={{ 
+                    fontFamily: 'monospace', 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: '#333',
+                    fontSize: '12px',
+                    maxWidth: '200px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>{t.token}</td>
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: '#333'
+                  }}>{t.email || '-'}</td>
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: '#333'
+                  }}>{t.role}</td>
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: t.used ? '#007bff' : '#28a745',
+                    fontWeight: 'bold'
+                  }}>{t.used ? 'כן' : 'לא'}</td>
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: '#333'
+                  }}>{new Date(t.created_at).toLocaleString()}</td>
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    color: '#e53935',
+                    fontWeight: 'bold',
+                    cursor: t.email ? 'pointer' : 'not-allowed',
+                    textAlign: 'center'
+                  }}
+                    onClick={async () => {
+                      if (!t.email) return;
+                      if (!window.confirm('האם אתה בטוח שברצונך למחוק את המשתמש הזה?')) return;
+                      try {
+                        const token = localStorage.getItem('token');
+                        await axios.delete(`${API_BASE}/admin/users`, {
+                          headers: { Authorization: `Bearer ${token}` },
+                          data: { email: t.email }
+                        });
+                        fetchTokens();
+                        alert('המשתמש נמחק בהצלחה');
+                      } catch (e) {
+                        alert('שגיאה במחיקת המשתמש');
+                      }
+                    }}
+                  >🗑️</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
