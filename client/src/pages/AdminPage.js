@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminUserManager from '../components/AdminUserManager';
 import SessionTable from '../components/SessionTable';
 import Notification from '../components/Notification';
 import AdminStats from '../components/AdminStats';
