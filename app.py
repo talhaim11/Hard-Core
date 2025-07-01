@@ -1,3 +1,27 @@
+# Admin delete user by email (for InviteTokenManager)
+@app.route('/admin/users', methods=['DELETE'])
+@token_required
+def admin_delete_user(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Get user id by email
+        c.execute('SELECT id FROM "user" WHERE email = %s', (email,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        user_id = row[0]
+        # Delete from user_session first
+        c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+        # Delete the user
+        c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+        conn.commit()
+    return jsonify({'message': 'User deleted'})
 
 from flask_cors import CORS
 
@@ -15,14 +39,15 @@ import jwt
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
+from flask_cors import CORS
+
 CORS(app, supports_credentials=True, origins=[
     "https://gym-frontend-staging.netlify.app",
     "https://gym-frontend-staging.netlify.app/",
     "https://gym-frontend-staging.netlify.app/*",
     "http://localhost:3000",
     "http://127.0.0.1:3000"
-], allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"], expose_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"])
-
+], allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"], expose_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
