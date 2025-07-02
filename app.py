@@ -17,13 +17,18 @@ import jwt
 app = Flask(__name__)
 from flask_cors import CORS
 
-CORS(app, supports_credentials=True, origins=[
-    "https://gym-frontend-staging.netlify.app",
-    "https://gym-frontend-staging.netlify.app/",
-    "https://gym-frontend-staging.netlify.app/*",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-], allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"], expose_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[
+        "https://gym-frontend-staging.netlify.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
