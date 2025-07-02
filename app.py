@@ -1,10 +1,3 @@
-@app.route('/debug-routes')
-def debug_routes():
-    output = []
-    for rule in app.url_map.iter_rules():
-        methods = ','.join(sorted(rule.methods))
-        output.append(f"{rule.rule} [{methods}]")
-    return '<br>'.join(output)
 
 from flask_cors import CORS
 
@@ -244,6 +237,15 @@ def get_users():
         c.execute('SELECT id, email, role FROM "user"')
         users = [{'id': row[0], 'email': row[1], 'role': row[2]} for row in c.fetchall()]
     return jsonify(users)
+
+@app.route('/debug-routes')
+def debug_routes():
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods))
+        output.append(f"{rule.rule} [{methods}]")
+    return '<br>'.join(output)
+
 
 # Admin delete user by email (for InviteTokenManager)
 @app.route('/admin/users', methods=['DELETE', 'OPTIONS'])
