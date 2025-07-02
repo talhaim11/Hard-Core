@@ -1,3 +1,10 @@
+@app.route('/debug-routes')
+def debug_routes():
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods))
+        output.append(f"{rule.rule} [{methods}]")
+    return '<br>'.join(output)
 
 from flask_cors import CORS
 
@@ -239,7 +246,7 @@ def get_users():
     return jsonify(users)
 
 # Admin delete user by email (for InviteTokenManager)
-@app.route('/admin/users', methods=['DELETE'])
+@app.route('/admin/users', methods=['DELETE', 'OPTIONS'])
 @token_required
 def admin_delete_user(current_user):
     if current_user['role'] != 'admin':
