@@ -36,6 +36,9 @@ POSTGRES_URL = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL')
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow preflight OPTIONS requests to pass through without auth
+        if request.method == 'OPTIONS':
+            return '', 204
         token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[-1]
