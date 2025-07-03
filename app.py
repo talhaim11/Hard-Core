@@ -537,8 +537,18 @@ def _handle_session_registration(current_user, session_id):
             if c.fetchone():
                 print("[DEBUG] User already registered for this session")
                 return jsonify({'message': 'Already registered for this session'}), 200
+            
+            # *** NEW: Check if user has valid subscription ***
+            subscription_check = _check_user_subscription(current_user['id'], c)
+            if not subscription_check['valid']:
+                return jsonify({'error': subscription_check['message']}), 403
+            
             # Register
             c.execute('INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)', (current_user['id'], session_id))
+            
+            # *** NEW: Update subscription usage ***
+            _update_subscription_usage(current_user['id'], c)
+            
             conn.commit()
             print("[DEBUG] Registration successful")
         return jsonify({'message': 'Registered successfully'})
@@ -1107,6 +1117,194 @@ def reset_password():
         c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_row[0]))
         conn.commit()
     return jsonify({'message': 'Password reset successful'})
+
+# --- SUBSCRIPTION MANAGEMENT ---
+@app.route('/api/subscriptions', methods=['POST'])
+@token_required
+def create_subscription(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.json
+    user_id = data.get('user_id')
+    sub_type = data.get('type')
+    
+    if not user_id or not sub_type:
+        return jsonify({'error': 'Missing user_id or type'}), 400
+    
+    # Calculate subscription parameters
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    
+    if sub_type == 'monthly':
+        end_time = now + timedelta(days=30)
+        remaining_entries = None
+    elif sub_type == 'one-time':
+        end_time = None
+        remaining_entries = 1
+    elif sub_type == '5-entries':
+        end_time = None
+        remaining_entries = 5
+    elif sub_type == '10-entries':
+        end_time = None
+        remaining_entries = 10
+    else:
+        return jsonify({'error': 'Invalid subscription type'}), 400
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if user exists
+            c.execute('SELECT id FROM "user" WHERE id = %s', (user_id,))
+            if not c.fetchone():
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Insert subscription
+            c.execute('''
+                INSERT INTO subscriptions (user_id, type, start_time, end_time, remaining_entries, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (user_id, sub_type, now, end_time, remaining_entries, True))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': f'Subscription {sub_type} created successfully'}), 201
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subscriptions/<int:user_id>', methods=['GET'])
+@token_required
+def get_user_subscriptions(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT id, user_id, type, start_time, end_time, remaining_entries, is_active, created_at
+                FROM subscriptions 
+                WHERE user_id = %s 
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            
+            rows = c.fetchall()
+            subscriptions = []
+            
+            for row in rows:
+                subscription = {
+                    'id': row[0],
+                    'user_id': row[1],
+                    'type': row[2],
+                    'start_time': row[3].isoformat() if row[3] else None,
+                    'end_time': row[4].isoformat() if row[4] else None,
+                    'remaining_entries': row[5],
+                    'is_active': row[6],
+                    'created_at': row[7].isoformat() if row[7] else None
+                }
+                subscriptions.append(subscription)
+            
+            return jsonify(subscriptions), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subscriptions/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user_subscriptions(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Delete all subscriptions for the user
+            c.execute('DELETE FROM subscriptions WHERE user_id = %s', (user_id,))
+            
+            # Also delete all user session entries
+            c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'All subscriptions and session entries deleted'}), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- Helper functions for subscription validation ---
+def _check_user_subscription(user_id, cursor):
+    """Check if user has a valid subscription for session registration"""
+    from datetime import datetime
+    
+    # Get all active subscriptions for the user
+    cursor.execute('''
+        SELECT id, type, start_time, end_time, remaining_entries, is_active
+        FROM subscriptions 
+        WHERE user_id = %s AND is_active = TRUE
+        ORDER BY created_at DESC
+    ''', (user_id,))
+    
+    subscriptions = cursor.fetchall()
+    
+    if not subscriptions:
+        return {'valid': False, 'message': 'No active subscriptions found. Please contact an admin to activate your subscription.'}
+    
+    now = datetime.now()
+    
+    # Check each subscription
+    for sub in subscriptions:
+        sub_id, sub_type, start_time, end_time, remaining_entries, is_active = sub
+        
+        if not is_active:
+            continue
+            
+        if sub_type == 'monthly':
+            # Check if monthly subscription is still valid
+            if end_time and now <= end_time:
+                return {'valid': True, 'message': 'Monthly subscription is active'}
+        
+        elif sub_type in ['one-time', '5-entries', '10-entries']:
+            # Check if there are remaining entries
+            if remaining_entries and remaining_entries > 0:
+                return {'valid': True, 'message': f'Entry-based subscription has {remaining_entries} remaining entries'}
+    
+    return {'valid': False, 'message': 'No valid subscriptions found. All subscriptions have expired or been used up.'}
+
+def _update_subscription_usage(user_id, cursor):
+    """Update subscription usage when a session is registered"""
+    from datetime import datetime
+    
+    # Get the most recent active subscription with remaining entries
+    cursor.execute('''
+        SELECT id, type, remaining_entries
+        FROM subscriptions 
+        WHERE user_id = %s AND is_active = TRUE AND remaining_entries > 0
+        ORDER BY created_at DESC
+        LIMIT 1
+    ''', (user_id,))
+    
+    subscription = cursor.fetchone()
+    
+    if subscription:
+        sub_id, sub_type, remaining_entries = subscription
+        
+        if sub_type in ['one-time', '5-entries', '10-entries']:
+            new_remaining = remaining_entries - 1
+            
+            if new_remaining <= 0:
+                # Mark subscription as inactive if no entries left
+                cursor.execute('''
+                    UPDATE subscriptions 
+                    SET remaining_entries = %s, is_active = FALSE 
+                    WHERE id = %s
+                ''', (new_remaining, sub_id))
+            else:
+                # Just update remaining entries
+                cursor.execute('''
+                    UPDATE subscriptions 
+                    SET remaining_entries = %s 
+                    WHERE id = %s
+                ''', (new_remaining, sub_id))
 
 if __name__ == "__main__":
     from os import environ

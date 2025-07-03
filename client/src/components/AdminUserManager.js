@@ -6,7 +6,9 @@ import '../styles/AdminUserManager.css';
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
-  const [deals, setDeals] = useState({});
+  const [subscriptions, setSubscriptions] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const fetchUsers = async () => {
     try {
@@ -18,18 +20,20 @@ export default function AdminPanel() {
       setUsers(Array.isArray(res.data) ? res.data : (res.data.users || []));
     } catch (err) {
       console.error("Failed to fetch users", err);
+      setMessage('Failed to fetch users');
     }
   };
 
-  const fetchDeals = async (userId) => {
+  const fetchSubscriptions = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_BASE}/users/${userId}/deals`, {
+      const res = await axios.get(`${API_BASE}/api/subscriptions/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setDeals(prevDeals => ({ ...prevDeals, [userId]: res.data }));
+      setSubscriptions(prevSubs => ({ ...prevSubs, [userId]: res.data }));
     } catch (err) {
-      console.error("Failed to fetch deals", err);
+      console.error("Failed to fetch subscriptions", err);
+      setMessage('Failed to fetch subscriptions');
     }
   };
 
@@ -40,27 +44,50 @@ export default function AdminPanel() {
       await axios.delete(`${API_BASE}/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert('User deleted!');
+      setMessage('User deleted successfully!');
       fetchUsers();
     } catch (err) {
       console.error("Error deleting user:", err);
       const errorMsg = err.response?.data?.error || 'Failed to delete user';
-      alert(`Failed to delete user: ${errorMsg}`);
+      setMessage(`Failed to delete user: ${errorMsg}`);
     }
   };
 
-  const createDealHandler = async (userId, dealType) => {
+  const createSubscriptionHandler = async (userId, subscriptionType) => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE}/users/${userId}/deals`, { type: dealType }, {
+      await axios.post(`${API_BASE}/api/subscriptions`, 
+        { user_id: userId, type: subscriptionType }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage(`${subscriptionType} subscription created successfully!`);
+      fetchSubscriptions(userId);
+    } catch (err) {
+      console.error("Error creating subscription:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to create subscription';
+      setMessage(`Failed to create subscription: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteSubscriptionsHandler = async (userId) => {
+    if (!window.confirm('Delete all subscriptions and session entries for this user?')) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/api/subscriptions/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert('Deal created successfully!');
-      fetchDeals(userId);
+      setMessage('All subscriptions and session entries deleted successfully!');
+      setSubscriptions(prev => ({ ...prev, [userId]: [] }));
     } catch (err) {
-      console.error("Error creating deal:", err);
-      const errorMsg = err.response?.data?.error || 'Failed to create deal';
-      alert(`Failed to create deal: ${errorMsg}`);
+      console.error("Error deleting subscriptions:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete subscriptions';
+      setMessage(`Failed to delete subscriptions: ${errorMsg}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,6 +95,12 @@ export default function AdminPanel() {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   // Debug: log users and filteredUsers
   console.log('All users:', users);
@@ -80,8 +113,13 @@ export default function AdminPanel() {
   return (
     <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
-      <div style={{ color: '#1e90ff', marginBottom: 12 }}>
-      </div>
+      
+      {message && (
+        <div className={`message ${message.includes('Failed') ? 'error' : 'success'}`}>
+          {message}
+        </div>
+      )}
+      
       <h3 className="user-list-label">משתמשים רשומים:</h3>
       <input
         type="text"
@@ -91,22 +129,79 @@ export default function AdminPanel() {
         onChange={e => setSearch(e.target.value)}
         style={{marginBottom: '0.5rem', width: '90%'}}
       />
+      
       <ul className="user-list scrollable-user-list">
         {filteredUsers.map((u, i) => (
           <li key={i} className="user-item">
             <div className="user-info">{u.email} ({u.role})</div>
             <div className="user-actions">
-              <button className="view-deals" onClick={() => fetchDeals(u.id)}>View Deals</button>
-              <button className="create-deal" onClick={() => createDealHandler(u.id, 'One-time entry')}>Create One-time Entry</button>
-              <button className="create-deal" onClick={() => createDealHandler(u.id, 'Monthly subscription')}>Create Monthly Subscription</button>
-              <button className="delete-user-btn" onClick={() => deleteUserHandler(u.id)}>🗑️ Delete</button>
+              <button 
+                className="view-details" 
+                onClick={() => fetchSubscriptions(u.id)}
+                disabled={loading}
+              >
+                View Details
+              </button>
+              <button 
+                className="create-subscription monthly" 
+                onClick={() => createSubscriptionHandler(u.id, 'monthly')}
+                disabled={loading}
+              >
+                Create Monthly Subscription
+              </button>
+              <button 
+                className="create-subscription one-time" 
+                onClick={() => createSubscriptionHandler(u.id, 'one-time')}
+                disabled={loading}
+              >
+                Create One-Time Entry
+              </button>
+              <button 
+                className="create-subscription five-entries" 
+                onClick={() => createSubscriptionHandler(u.id, '5-entries')}
+                disabled={loading}
+              >
+                Create 5 Entries
+              </button>
+              <button 
+                className="create-subscription ten-entries" 
+                onClick={() => createSubscriptionHandler(u.id, '10-entries')}
+                disabled={loading}
+              >
+                Create 10 Entries
+              </button>
+              <button 
+                className="delete-subscriptions-btn" 
+                onClick={() => deleteSubscriptionsHandler(u.id)}
+                disabled={loading}
+              >
+                Delete Subscriptions Options
+              </button>
+              <button 
+                className="delete-user-btn" 
+                onClick={() => deleteUserHandler(u.id)}
+                disabled={loading}
+              >
+                🗑️ Delete User
+              </button>
             </div>
-            {deals[u.id] && (
-              <ul>
-                {deals[u.id].map((deal, j) => (
-                  <li key={j}>{deal.type}</li>
-                ))}
-              </ul>
+            {subscriptions[u.id] && (
+              <div className="subscription-details">
+                <h4>Subscriptions:</h4>
+                <ul className="subscription-list">
+                  {subscriptions[u.id].map((sub, j) => (
+                    <li key={j} className="subscription-item">
+                      <strong>{sub.type}</strong>
+                      <span className="subscription-info">
+                        Started: {new Date(sub.start_time).toLocaleDateString()}
+                        {sub.end_time && ` | Expires: ${new Date(sub.end_time).toLocaleDateString()}`}
+                        {sub.remaining_entries && ` | Remaining: ${sub.remaining_entries}`}
+                        {sub.is_active ? ' | Active' : ' | Inactive'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </li>
         ))}
@@ -115,18 +210,3 @@ export default function AdminPanel() {
   );
 }
 
-// This component allows an admin to manage users, including viewing the list of registered users and deleting existing users.
-// It uses axios to make API calls to the backend for user management.
-// The component maintains state for the list of users, as well as form inputs for searching users.
-// The `fetchUsers` function retrieves the list of users from the backend and updates the state.
-// The `deleteUserHandler` function sends a DELETE request to remove a user by their ID.
-// The component renders a search input and displays the list of registered users with an option to delete each user.
-// Note: Make sure to replace the API endpoint with your actual backend URL if different.
-// Ensure you have axios installed in your project: npm install axios
-// Make sure to handle errors appropriately in a production application.
-// This code is a React component for an admin panel that allows user management.
-// It includes functionality to view a list of registered users and delete users.
-// Ensure you have the necessary backend API endpoints set up to handle user management requests.
-// This code is a React component for an admin panel that allows user management.
-// It includes functionality to view a list of registered users and delete users.
-// Ensure you have the necessary backend API endpoints set up to handle user management requests.
