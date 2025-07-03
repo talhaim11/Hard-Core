@@ -25,6 +25,27 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.user-item button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.user-item button:hover {
+  background-color: #0056b3;
+}
+
+.user-item ul {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  list-style-type: disc;
+}
+
 .user-actions {
   display: flex;
   gap: 0.5rem;

@@ -6,6 +6,7 @@ import '../styles/AdminUserManager.css';
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
+  const [deals, setDeals] = useState({});
 
   const fetchUsers = async () => {
     try {
@@ -17,6 +18,18 @@ export default function AdminPanel() {
       setUsers(Array.isArray(res.data) ? res.data : (res.data.users || []));
     } catch (err) {
       console.error("Failed to fetch users", err);
+    }
+  };
+
+  const fetchDeals = async (userId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/users/${userId}/deals`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDeals(prevDeals => ({ ...prevDeals, [userId]: res.data }));
+    } catch (err) {
+      console.error("Failed to fetch deals", err);
     }
   };
 
@@ -33,6 +46,21 @@ export default function AdminPanel() {
       console.error("Error deleting user:", err);
       const errorMsg = err.response?.data?.error || 'Failed to delete user';
       alert(`Failed to delete user: ${errorMsg}`);
+    }
+  };
+
+  const createDealHandler = async (userId, dealType) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_BASE}/users/${userId}/deals`, { type: dealType }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert('Deal created successfully!');
+      fetchDeals(userId);
+    } catch (err) {
+      console.error("Error creating deal:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to create deal';
+      alert(`Failed to create deal: ${errorMsg}`);
     }
   };
 
@@ -67,6 +95,16 @@ export default function AdminPanel() {
         {filteredUsers.map((u, i) => (
           <li key={i} className="user-item">
             {u.email} ({u.role})
+            <button onClick={() => fetchDeals(u.id)}>View Deals</button>
+            <button onClick={() => createDealHandler(u.id, 'One-time entry')}>Create One-time Entry</button>
+            <button onClick={() => createDealHandler(u.id, 'Monthly subscription')}>Create Monthly Subscription</button>
+            {deals[u.id] && (
+              <ul>
+                {deals[u.id].map((deal, j) => (
+                  <li key={j}>{deal.type}</li>
+                ))}
+              </ul>
+            )}
             <button className="delete-user-btn" onClick={() => deleteUserHandler(u.id)}>🗑️</button>
           </li>
         ))}

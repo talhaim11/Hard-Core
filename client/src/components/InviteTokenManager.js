@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
+import '../styles/InviteTokenManager.css';
 
 const InviteTokenManager = () => {
   const [tokens, setTokens] = useState([]);
@@ -160,7 +161,7 @@ const InviteTokenManager = () => {
       </div>
       {loading ? <div>טוען...</div> : (
         <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 8 }}>
-          <table style={{ 
+          <table className="token-table" style={{ 
             width: '100%', 
             direction: 'rtl',
             borderCollapse: 'collapse',

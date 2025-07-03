@@ -1,0 +1,42 @@
+.invite-token-manager {
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.token-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.token-table th, .token-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.token-table th {
+  background-color: #007bff;
+  color: white;
+}
+
+.token-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.token-table tr:hover {
+  background-color: #ddd;
+}
+
+.token-table button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.token-table button:hover {
+  background-color: #a71d2a;
+}
