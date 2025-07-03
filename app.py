@@ -1233,12 +1233,12 @@ def delete_user_subscriptions(current_user, user_id):
 
 # --- Helper functions for subscription validation ---
 def _check_user_subscription(user_id, cursor):
-    """Check if user has a valid subscription for session registration"""
+    """Check if user has valid subscription for session registration"""
     from datetime import datetime
     
     # Get all active subscriptions for the user
     cursor.execute('''
-        SELECT id, type, start_time, end_time, remaining_entries, is_active
+        SELECT type, start_time, end_time, remaining_entries, is_active
         FROM subscriptions 
         WHERE user_id = %s AND is_active = TRUE
         ORDER BY created_at DESC
@@ -1247,34 +1247,31 @@ def _check_user_subscription(user_id, cursor):
     subscriptions = cursor.fetchall()
     
     if not subscriptions:
-        return {'valid': False, 'message': 'No active subscriptions found. Please contact an admin to activate your subscription.'}
+        return {'valid': False, 'message': 'No active subscriptions found. Please contact admin to activate a subscription.'}
     
     now = datetime.now()
     
     # Check each subscription
     for sub in subscriptions:
-        sub_id, sub_type, start_time, end_time, remaining_entries, is_active = sub
+        sub_type, start_time, end_time, remaining_entries, is_active = sub
         
-        if not is_active:
-            continue
-            
         if sub_type == 'monthly':
-            # Check if monthly subscription is still valid
-            if end_time and now <= end_time:
-                return {'valid': True, 'message': 'Monthly subscription is active'}
+            # Check if within 30-day window
+            if start_time <= now <= end_time:
+                return {'valid': True, 'message': 'Valid monthly subscription'}
         
         elif sub_type in ['one-time', '5-entries', '10-entries']:
-            # Check if there are remaining entries
+            # Check if has remaining entries
             if remaining_entries and remaining_entries > 0:
-                return {'valid': True, 'message': f'Entry-based subscription has {remaining_entries} remaining entries'}
+                return {'valid': True, 'message': f'Valid {sub_type} subscription with {remaining_entries} remaining'}
     
-    return {'valid': False, 'message': 'No valid subscriptions found. All subscriptions have expired or been used up.'}
+    return {'valid': False, 'message': 'No valid subscriptions found. Your subscriptions may have expired or run out of entries.'}
 
 def _update_subscription_usage(user_id, cursor):
-    """Update subscription usage when a session is registered"""
+    """Update subscription usage after successful registration"""
     from datetime import datetime
     
-    # Get the most recent active subscription with remaining entries
+    # Get the most recent active subscription that has remaining entries
     cursor.execute('''
         SELECT id, type, remaining_entries
         FROM subscriptions 
@@ -1283,26 +1280,26 @@ def _update_subscription_usage(user_id, cursor):
         LIMIT 1
     ''', (user_id,))
     
-    subscription = cursor.fetchone()
+    sub = cursor.fetchone()
     
-    if subscription:
-        sub_id, sub_type, remaining_entries = subscription
+    if sub:
+        sub_id, sub_type, remaining_entries = sub
         
         if sub_type in ['one-time', '5-entries', '10-entries']:
             new_remaining = remaining_entries - 1
             
             if new_remaining <= 0:
-                # Mark subscription as inactive if no entries left
+                # Deactivate subscription when no entries left
                 cursor.execute('''
                     UPDATE subscriptions 
-                    SET remaining_entries = %s, is_active = FALSE 
+                    SET remaining_entries = %s, is_active = FALSE
                     WHERE id = %s
                 ''', (new_remaining, sub_id))
             else:
-                # Just update remaining entries
+                # Update remaining entries
                 cursor.execute('''
                     UPDATE subscriptions 
-                    SET remaining_entries = %s 
+                    SET remaining_entries = %s
                     WHERE id = %s
                 ''', (new_remaining, sub_id))
 

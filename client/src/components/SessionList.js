@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../config';
 import '../styles/AdminPage.css'; // Reuse card/table styles for consistency
 
 const SessionList = ({ token }) => {
@@ -10,7 +11,7 @@ const SessionList = ({ token }) => {
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const response = await axios.get('/sessions', {
+        const response = await axios.get(`${API_BASE}/sessions`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = Array.isArray(response.data)
@@ -29,10 +30,10 @@ const SessionList = ({ token }) => {
 
   const handleRegister = async (sessionId) => {
     try {
-      await axios.post(`/sessions/${sessionId}/register`, {}, {
+      await axios.post(`${API_BASE}/sessions/${sessionId}/register`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const updated = await axios.get('/sessions', {
+      const updated = await axios.get(`${API_BASE}/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = Array.isArray(updated.data)
@@ -41,15 +42,16 @@ const SessionList = ({ token }) => {
       setSessions(data);
     } catch (error) {
       console.error('Error registering:', error);
+      alert('שגיאה בהרשמה למפגש. אנא בדוק שיש לך מנוי פעיל.');
     }
   };
 
   const handleCancel = async (sessionId) => {
     try {
-      await axios.delete(`/sessions/${sessionId}`, {
+      await axios.delete(`${API_BASE}/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const updated = await axios.get('/sessions', {
+      const updated = await axios.get(`${API_BASE}/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = Array.isArray(updated.data)
@@ -57,7 +59,7 @@ const SessionList = ({ token }) => {
         : updated.data.sessions || [];
       setSessions(data);
     } catch (error) {
-      console.error('Error cancelling:', error);
+      console.error('Error canceling registration:', error);
     }
   };
 
