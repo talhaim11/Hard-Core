@@ -274,12 +274,21 @@ def admin_delete_user(current_user):
         if not row:
             return jsonify({'error': 'User not found'}), 404
         user_id = row[0]
+        
         # Delete from user_session first
         c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+        
+        # Delete from attendance records
+        c.execute('DELETE FROM attendance WHERE user_id = %s', (user_id,))
+        
         # Delete the user
         c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+        
+        # Delete associated invite tokens
+        c.execute('DELETE FROM invite_token WHERE email = %s', (email,))
+        
         conn.commit()
-    return jsonify({'message': 'User deleted'})
+    return jsonify({'message': 'User and associated tokens deleted successfully'})
 
 
 @app.route('/me', methods=['GET'])
@@ -445,13 +454,43 @@ def cleanup_invite_tokens(current_user):
         return jsonify({'error': 'Unauthorized'}), 403
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        # Delete all tokens that are marked as used and have a matching user in the user table
+        
+        # Count tokens before cleanup
+        c.execute('SELECT COUNT(*) FROM invite_token')
+        before_count = c.fetchone()[0]
+        
+        # Only delete tokens that are truly orphaned:
+        # 1. Unused tokens with no email (free tokens)
         c.execute('''
             DELETE FROM invite_token 
-            WHERE used = TRUE AND email IS NOT NULL AND email IN (SELECT email FROM "user")
+            WHERE used = FALSE AND (email IS NULL OR email = '')
         ''')
+        
+        # 2. Used tokens where the user was deleted (orphaned tokens)
+        # But ONLY if there are actually users in the system to compare against
+        c.execute('SELECT COUNT(*) FROM "user"')
+        user_count = c.fetchone()[0]
+        
+        if user_count > 0:
+            c.execute('''
+                DELETE FROM invite_token 
+                WHERE used = TRUE AND email IS NOT NULL AND email != '' 
+                AND email NOT IN (SELECT email FROM "user")
+            ''')
+        
         conn.commit()
-    return jsonify({'message': 'Cleaned up used tokens for deleted users.'})
+        
+        # Count tokens after cleanup
+        c.execute('SELECT COUNT(*) FROM invite_token')
+        after_count = c.fetchone()[0]
+        deleted_count = before_count - after_count
+        
+    return jsonify({
+        'message': f'Cleaned up {deleted_count} unused/orphaned tokens.',
+        'deleted_count': deleted_count,
+        'remaining_count': after_count,
+        'user_count': user_count
+    })
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
@@ -793,8 +832,15 @@ def delete_user(current_user, user_id):
                 c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
                 print(f"Deleted {c.rowcount} user_session records")
             
-            # Check for any other references (invite tokens created by this user, etc.)
-            # Note: invite_token table doesn't have foreign keys to user, so no need to clean it
+            # Delete attendance records
+            c.execute('DELETE FROM attendance WHERE user_id = %s', (user_id,))
+            attendance_count = c.rowcount
+            print(f"Deleted {attendance_count} attendance records")
+            
+            # Delete associated invite tokens
+            c.execute('DELETE FROM invite_token WHERE email = %s', (user[1],))
+            token_count = c.rowcount
+            print(f"Deleted {token_count} invite tokens")
             
             # Delete the user
             c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
