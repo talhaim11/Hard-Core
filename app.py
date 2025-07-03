@@ -217,15 +217,16 @@ def register():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
-    email = data.get('email')
+    email_or_username = data.get('email')
     password = data.get('password')
 
-    print(f"[LOGIN] Received email: {email}")
+    print(f"[LOGIN] Received email/username: {email_or_username}")
     print(f"[LOGIN] Received password: {password}")
 
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
-        c.execute('SELECT id, password, role FROM "user" WHERE email = %s', (email,))
+        # Try to find user by email or username (since your DB uses both in the 'email' field)
+        c.execute('SELECT id, password, role FROM "user" WHERE email = %s OR email = %s', (email_or_username, email_or_username))
         row = c.fetchone()
 
         if row:
