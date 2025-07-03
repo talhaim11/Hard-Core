@@ -4,6 +4,7 @@ import SessionTable from '../components/SessionTable';
 import Notification from '../components/Notification';
 import AdminStats from '../components/AdminStats';
 import InviteTokenManager from '../components/InviteTokenManager';
+import AdminUserManager from '../components/AdminUserManager';
 import '../styles/AdminPage.css';
 
 const weightliftingSVG = (
@@ -20,6 +21,7 @@ const weightliftingSVG = (
 const TABS = [
   { key: 'stats', label: 'סטטיסטיקות' },
   { key: 'sessions', label: 'לוח מפגשים' },
+  { key: 'users', label: 'ניהול משתמשים' },
   { key: 'tokens', label: 'ניהול טוקנים' },
 ];
 
@@ -77,7 +79,11 @@ const AdminPage = () => {
               <AdminStats />
             </div>
           )}
-          {/* Removed ניהול משתמשים tab and content */}
+          {activeTab === 'users' && (
+            <div className="admin-section" style={{ textAlign: 'right' }}>
+              <AdminUserManager />
+            </div>
+          )}
           {activeTab === 'sessions' && (
             <div className="admin-section" style={{ textAlign: 'right' }}>
               <h2>לוח מפגשים</h2>
