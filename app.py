@@ -1,4 +1,3 @@
-
 from flask_cors import CORS
 
 import psycopg2
@@ -1000,6 +999,34 @@ def list_invite_tokens(current_user):
         ]
     return jsonify({'tokens': tokens})
 
+# Delete individual invite token
+@app.route('/invite-tokens/<int:token_id>', methods=['DELETE', 'OPTIONS'])
+@token_required
+def delete_invite_token(current_user, token_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Get token info before deletion
+        c.execute('SELECT id, email, used FROM invite_token WHERE id = %s', (token_id,))
+        token = c.fetchone()
+        if not token:
+            return jsonify({'error': 'Token not found'}), 404
+        
+        # Delete the token
+        c.execute('DELETE FROM invite_token WHERE id = %s', (token_id,))
+        conn.commit()
+        
+        return jsonify({
+            'message': f'Token deleted successfully',
+            'deleted_token': {
+                'id': token[0],
+                'email': token[1], 
+                'was_used': token[2]
+            }
+        })
 
 def check_time_overlap(date, start_time, end_time, exclude_session_id=None):
     """Check if there's any time overlap with existing sessions on the same date"""

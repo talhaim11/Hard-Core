@@ -75,7 +75,7 @@ const InviteTokenManager = () => {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE}/admin/users-with-tokens`, {
+      await axios.delete(`${API_BASE}/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { email: email }
       });
