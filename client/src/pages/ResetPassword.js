@@ -47,10 +47,10 @@ export default function ResetPassword() {
         <h1>איפוס סיסמה</h1>
         <form onSubmit={handleReset}>
           <label>
-            אימייל
+            שם משתמש
             <input
-              type="email"
-              placeholder="Email"
+              type="text"
+              placeholder="Username"
               value={email}
               onChange={e => setEmail(e.target.value)}
             />

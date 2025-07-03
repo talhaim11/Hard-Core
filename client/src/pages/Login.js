@@ -47,10 +47,10 @@ function Login({ setRole }) {
       <div className="login-card">
         <h1>Login</h1>
         <label>
-          Email
+          Username
           <input
-            type="email"
-            placeholder="Email"
+            type="text"
+            placeholder="Username"
             value={email}
             onChange={e => setEmail(e.target.value)}
           />

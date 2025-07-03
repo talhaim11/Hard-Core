@@ -49,8 +49,8 @@ const InviteTokenManager = () => {
     <div className="invite-token-manager" dir="rtl">
       <h2>ניהול טוקנים להזמנה</h2>
       <form onSubmit={handleCreate} style={{ marginBottom: 16 }}>
-        <label>אימייל (לא חובה):
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="email" />
+        <label>שם משתמש (לא חובה):
+          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="username" />
         </label>
         <label>הרשאה:
           <select value={role} onChange={e => setRole(e.target.value)}>

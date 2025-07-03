@@ -178,7 +178,7 @@ const UserDashboard = () => {
       {/* Profile */}
       {profile && !editMode && (
         <div className="profile-box">
-          <div>אימייל: {profile.email}</div>
+          <div>שם משתמש: {profile.email}</div>
           <div>שם: {profile.name || '-'}</div>
           <button onClick={handleProfileEdit}>ערוך פרופיל</button>
         </div>
@@ -186,7 +186,7 @@ const UserDashboard = () => {
       {editMode && (
         <div className="profile-edit-box">
           <label>שם: <input value={editProfile.name} onChange={e => setEditProfile({ ...editProfile, name: e.target.value })} /></label><br />
-          <label>אימייל: <input value={editProfile.email} onChange={e => setEditProfile({ ...editProfile, email: e.target.value })} /></label><br />
+          <label>שם משתמש: <input value={editProfile.email} onChange={e => setEditProfile({ ...editProfile, email: e.target.value })} /></label><br />
           <label>סיסמה חדשה: <input type="password" value={editProfile.password} onChange={e => setEditProfile({ ...editProfile, password: e.target.value })} /></label><br />
           <button onClick={handleProfileSave}>שמור</button>
           <button onClick={() => setEditMode(false)} style={{marginLeft:8}}>ביטול</button>
