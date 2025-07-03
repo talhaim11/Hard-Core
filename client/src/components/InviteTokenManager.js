@@ -54,6 +54,39 @@ const InviteTokenManager = () => {
     }
   };
 
+  const deleteToken = async (tokenId, tokenEmail) => {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את הטוקן הזה?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/invite-tokens/${tokenId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSuccess('הטוקן נמחק בהצלחה');
+      fetchTokens();
+      fetchUsers();
+    } catch (e) {
+      setError('שגיאה במחיקת הטוקן');
+    }
+  };
+
+  const deleteUserAndAllTokens = async (email) => {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${email}" וכל הטוקנים שלו?`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/admin/users-with-tokens`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { email: email }
+      });
+      setSuccess(`המשתמש "${email}" וכל הטוקנים נמחקו בהצלחה`);
+      fetchTokens();
+      fetchUsers();
+    } catch (e) {
+      setError('שגיאה במחיקת המשתמש והטוקנים');
+    }
+  };
+
   useEffect(() => { 
     fetchTokens(); 
     fetchUsers();
@@ -177,7 +210,14 @@ const InviteTokenManager = () => {
                   backgroundColor: '#e9e9e9',
                   color: '#333',
                   fontWeight: 'bold'
-                }}>פעולות</th>
+                }}>מחק טוקן</th>
+                <th style={{ 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  backgroundColor: '#e9e9e9',
+                  color: '#333',
+                  fontWeight: 'bold'
+                }}>מחק משתמש+טוקנים</th>
               </tr>
             </thead>
             <tbody>
@@ -231,28 +271,38 @@ const InviteTokenManager = () => {
                     border: '1px solid #ddd',
                     color: '#333'
                   }}>{new Date(t.created_at).toLocaleString()}</td>
+                  
+                  {/* Delete Token Column */}
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
                     textAlign: 'center'
                   }}>
-                    {userExists ? (
+                    <button
+                      onClick={() => deleteToken(t.id, t.email)}
+                      style={{
+                        backgroundColor: '#ffc107',
+                        color: 'black',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      🗑️ מחק טוקן
+                    </button>
+                  </td>
+
+                  {/* Delete User+Tokens Column */}
+                  <td style={{ 
+                    padding: '10px', 
+                    border: '1px solid #ddd',
+                    textAlign: 'center'
+                  }}>
+                    {t.email && t.email.trim() !== '' ? (
                       <button
-                        onClick={async () => {
-                          if (!window.confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${t.email}" וכל הטוקנים שלו?`)) return;
-                          try {
-                            const token = localStorage.getItem('token');
-                            await axios.delete(`${API_BASE}/admin/users`, {
-                              headers: { Authorization: `Bearer ${token}` },
-                              data: { email: t.email }
-                            });
-                            setSuccess('המשתמש והטוקנים נמחקו בהצלחה');
-                            fetchTokens();
-                            fetchUsers();
-                          } catch (e) {
-                            setError('שגיאה במחיקת המשתמש');
-                          }
-                        }}
+                        onClick={() => deleteUserAndAllTokens(t.email)}
                         style={{
                           backgroundColor: '#dc3545',
                           color: 'white',
@@ -263,11 +313,11 @@ const InviteTokenManager = () => {
                           fontSize: '12px'
                         }}
                       >
-                        🗑️ מחק משתמש
+                        � מחק הכל
                       </button>
                     ) : (
                       <span style={{ color: '#999', fontSize: '12px' }}>
-                        {t.used && !userExists ? 'יתום' : 'אין משתמש'}
+                        אין משתמש
                       </span>
                     )}
                   </td>
