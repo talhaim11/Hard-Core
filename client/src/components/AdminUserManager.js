@@ -94,10 +94,13 @@ export default function AdminPanel() {
       <ul className="user-list scrollable-user-list">
         {filteredUsers.map((u, i) => (
           <li key={i} className="user-item">
-            {u.email} ({u.role})
-            <button onClick={() => fetchDeals(u.id)}>View Deals</button>
-            <button onClick={() => createDealHandler(u.id, 'One-time entry')}>Create One-time Entry</button>
-            <button onClick={() => createDealHandler(u.id, 'Monthly subscription')}>Create Monthly Subscription</button>
+            <div className="user-info">{u.email} ({u.role})</div>
+            <div className="user-actions">
+              <button className="view-deals" onClick={() => fetchDeals(u.id)}>View Deals</button>
+              <button className="create-deal" onClick={() => createDealHandler(u.id, 'One-time entry')}>Create One-time Entry</button>
+              <button className="create-deal" onClick={() => createDealHandler(u.id, 'Monthly subscription')}>Create Monthly Subscription</button>
+              <button className="delete-user-btn" onClick={() => deleteUserHandler(u.id)}>🗑️ Delete</button>
+            </div>
             {deals[u.id] && (
               <ul>
                 {deals[u.id].map((deal, j) => (
@@ -105,7 +108,6 @@ export default function AdminPanel() {
                 ))}
               </ul>
             )}
-            <button className="delete-user-btn" onClick={() => deleteUserHandler(u.id)}>🗑️</button>
           </li>
         ))}
       </ul>

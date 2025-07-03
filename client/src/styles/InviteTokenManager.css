@@ -2,41 +2,171 @@
   padding: 1rem;
   background-color: #f9f9f9;
   border-radius: 8px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.token-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group input, 
+.form-group select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.create-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 14px;
+  height: fit-content;
+  align-self: flex-end;
+}
+
+.create-btn:hover {
+  background-color: #0056b3;
+}
+
+.success-message {
+  color: #28a745;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.token-table-container {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .token-table {
   width: 100%;
   border-collapse: collapse;
-}
-
-.token-table th, .token-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: center;
+  font-size: 12px;
+  min-width: 600px;
 }
 
 .token-table th {
   background-color: #007bff;
   color: white;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 2px solid #0056b3;
 }
 
-.token-table tr:nth-child(even) {
-  background-color: #f2f2f2;
+.token-table td {
+  padding: 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid #dee2e6;
+  vertical-align: middle;
 }
 
 .token-table tr:hover {
-  background-color: #ddd;
+  background-color: #f8f9fa;
 }
 
-.token-table button {
+.token-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #666;
+}
+
+.check-mark {
+  color: #28a745;
+  font-weight: bold;
+  margin-right: 0.25rem;
+}
+
+.date-cell {
+  font-size: 10px;
+  color: #666;
+}
+
+.delete-btn {
   background-color: #dc3545;
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 0.25rem 0.5rem;
   cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
 }
 
-.token-table button:hover {
-  background-color: #a71d2a;
+.delete-btn:hover {
+  background-color: #c82333;
+}
+
+@media (max-width: 768px) {
+  .invite-token-manager {
+    padding: 0.5rem;
+  }
+  
+  .token-form {
+    flex-direction: column;
+  }
+  
+  .token-table {
+    font-size: 10px;
+  }
+  
+  .token-table th,
+  .token-table td {
+    padding: 0.25rem;
+  }
 }
