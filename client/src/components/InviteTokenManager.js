@@ -4,6 +4,7 @@ import { API_BASE } from '../config';
 
 const InviteTokenManager = () => {
   const [tokens, setTokens] = useState([]);
+  const [users, setUsers] = useState([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('user');
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,37 @@ const InviteTokenManager = () => {
     }
   };
 
-  useEffect(() => { fetchTokens(); }, []);
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Error fetching users:', e);
+    }
+  };
+
+  const cleanupTokens = async () => {
+    if (!window.confirm('האם אתה בטוח שברצונך לנקות טוקנים לא משומשים ויתומים?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_BASE}/invite-tokens/cleanup`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSuccess(`נוקו ${res.data.deleted_count} טוקנים. נותרו ${res.data.remaining_count} טוקנים.`);
+      fetchTokens();
+    } catch (e) {
+      setError('שגיאה בניקוי טוקנים');
+    }
+  };
+
+  useEffect(() => { 
+    fetchTokens(); 
+    fetchUsers();
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -62,7 +93,38 @@ const InviteTokenManager = () => {
       </form>
       {success && <div style={{ color: 'green' }}>{success}</div>}
       {error && <div style={{ color: 'red' }}>{error}</div>}
-      <h3>כל הטוקנים</h3>
+      
+      <div style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+        <h3>כל הטוקנים</h3>
+        <button 
+          onClick={cleanupTokens}
+          style={{ 
+            backgroundColor: '#ff6b6b', 
+            color: 'white', 
+            border: 'none', 
+            padding: '8px 16px', 
+            borderRadius: 4, 
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          🧹 נקה טוקנים יתומים
+        </button>
+        <button 
+          onClick={() => { fetchTokens(); fetchUsers(); }}
+          style={{ 
+            backgroundColor: '#4ecdc4', 
+            color: 'white', 
+            border: 'none', 
+            padding: '8px 16px', 
+            borderRadius: 4, 
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          🔄 רענן
+        </button>
+      </div>
       {loading ? <div>טוען...</div> : (
         <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 8 }}>
           <table style={{ 
@@ -87,7 +149,7 @@ const InviteTokenManager = () => {
                   backgroundColor: '#e9e9e9',
                   color: '#333',
                   fontWeight: 'bold'
-                }}>אימייל</th>
+                }}>שם משתמש</th>
                 <th style={{ 
                   padding: '12px', 
                   border: '1px solid #ddd', 
@@ -101,7 +163,7 @@ const InviteTokenManager = () => {
                   backgroundColor: '#e9e9e9',
                   color: '#333',
                   fontWeight: 'bold'
-                }}>שומש?</th>
+                }}>סטטוס</th>
                 <th style={{ 
                   padding: '12px', 
                   border: '1px solid #ddd', 
@@ -115,13 +177,23 @@ const InviteTokenManager = () => {
                   backgroundColor: '#e9e9e9',
                   color: '#333',
                   fontWeight: 'bold'
-                }}>מחק משתמש</th>
+                }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
-              {tokens.map(t => (
+              {tokens.map(t => {
+                const userExists = users.find(u => u.email === t.email);
+                const getStatus = () => {
+                  if (t.used && userExists) return { text: 'משתמש קיים', color: '#28a745' };
+                  if (t.used && !userExists) return { text: 'יתום', color: '#ff6b6b' };
+                  if (!t.used && t.email) return { text: 'לא שומש', color: '#ffc107' };
+                  return { text: 'חופשי', color: '#6c757d' };
+                };
+                const status = getStatus();
+                
+                return (
                 <tr key={t.id} style={{ 
-                  backgroundColor: t.used ? '#f0f8ff' : '#fff',
+                  backgroundColor: userExists ? '#f0f8ff' : (t.used ? '#ffe6e6' : '#fff'),
                   '&:hover': { backgroundColor: '#f9f9f9' }
                 }}>
                   <td style={{ 
@@ -137,8 +209,12 @@ const InviteTokenManager = () => {
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
-                    color: '#333'
-                  }}>{t.email || '-'}</td>
+                    color: userExists ? '#333' : '#999',
+                    fontWeight: userExists ? 'bold' : 'normal'
+                  }}>
+                    {t.email || '-'}
+                    {userExists && <span style={{ color: '#28a745', marginRight: 5 }}>✓</span>}
+                  </td>
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
@@ -147,9 +223,9 @@ const InviteTokenManager = () => {
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
-                    color: t.used ? '#007bff' : '#28a745',
+                    color: status.color,
                     fontWeight: 'bold'
-                  }}>{t.used ? 'כן' : 'לא'}</td>
+                  }}>{status.text}</td>
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
@@ -158,29 +234,46 @@ const InviteTokenManager = () => {
                   <td style={{ 
                     padding: '10px', 
                     border: '1px solid #ddd',
-                    color: '#e53935',
-                    fontWeight: 'bold',
-                    cursor: t.email ? 'pointer' : 'not-allowed',
                     textAlign: 'center'
-                  }}
-                    onClick={async () => {
-                      if (!t.email) return;
-                      if (!window.confirm('האם אתה בטוח שברצונך למחוק את המשתמש הזה?')) return;
-                      try {
-                        const token = localStorage.getItem('token');
-                        await axios.delete(`${API_BASE}/admin/users`, {
-                          headers: { Authorization: `Bearer ${token}` },
-                          data: { email: t.email }
-                        });
-                        fetchTokens();
-                        alert('המשתמש נמחק בהצלחה');
-                      } catch (e) {
-                        alert('שגיאה במחיקת המשתמש');
-                      }
-                    }}
-                  >🗑️</td>
+                  }}>
+                    {userExists ? (
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm(`האם אתה בטוח שברצונך למחוק את המשתמש "${t.email}" וכל הטוקנים שלו?`)) return;
+                          try {
+                            const token = localStorage.getItem('token');
+                            await axios.delete(`${API_BASE}/admin/users`, {
+                              headers: { Authorization: `Bearer ${token}` },
+                              data: { email: t.email }
+                            });
+                            setSuccess('המשתמש והטוקנים נמחקו בהצלחה');
+                            fetchTokens();
+                            fetchUsers();
+                          } catch (e) {
+                            setError('שגיאה במחיקת המשתמש');
+                          }
+                        }}
+                        style={{
+                          backgroundColor: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        🗑️ מחק משתמש
+                      </button>
+                    ) : (
+                      <span style={{ color: '#999', fontSize: '12px' }}>
+                        {t.used && !userExists ? 'יתום' : 'אין משתמש'}
+                      </span>
+                    )}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
