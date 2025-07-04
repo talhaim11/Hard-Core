@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
+import { API_BASE } from '../config';
+import axios from 'axios';
 import '../styles/UserDashboard.css';
 
 // Hebrew days of week, starting from Sunday
@@ -27,6 +29,7 @@ const UserDashboard = () => {
   const [editProfile, setEditProfile] = useState({ name: '', email: '', password: '' });
   const [achievements, setAchievements] = useState([]);
   const [activeDay, setActiveDay] = useState(new Date().getDay());
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
 
   // Helper: get current week (Sun-Sat) and next week
   function getCurrentAndNextWeek(date) {
@@ -76,6 +79,14 @@ const UserDashboard = () => {
         setEditProfile({ name: profileData.name || '', email: profileData.email || '', password: '' });
         const all = await fetchSessions();
         setAllSessions(all.sessions || []);
+        
+        // Fetch subscription status
+        const token = localStorage.getItem('token');
+        const subResponse = await axios.get(`${API_BASE}/user/subscription-status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSubscriptionStatus(subResponse.data);
+        
         // Simulate notifications and achievements (replace with API calls if available)
         setNotifications([
           { id: 1, message: 'אימון חדש נוסף למערכת!', date: '2025-06-24' },
@@ -86,11 +97,13 @@ const UserDashboard = () => {
           { id: 2, label: 'רצף 5 ימים', achieved: maxStreak >= 5 }
         ]);
       } catch (e) {
+        console.error('Error loading data:', e);
         setSessions([]);
         setProfile(null);
         setAllSessions([]);
         setNotifications([]);
         setAchievements([]);
+        setSubscriptionStatus(null);
       } finally {
         setLoading(false);
       }
@@ -164,6 +177,41 @@ const UserDashboard = () => {
     <div className="user-dashboard">
       <div className="welcome-message">No pain, no gain.</div>
       <h2 style={{textAlign:'center', marginBottom:'2rem'}}>הדשבורד שלי</h2>
+      
+      {/* Subscription Status */}
+      {subscriptionStatus && (
+        <div className="subscription-status-box">
+          <h4>סטטוס מנוי</h4>
+          {subscriptionStatus.has_valid_subscription ? (
+            <div className="valid-subscription">
+              <div className="status-indicator valid">✅ מנוי פעיל</div>
+              {subscriptionStatus.subscriptions.map((sub, index) => (
+                sub.is_valid && (
+                  <div key={index} className="subscription-detail">
+                    <strong>{sub.status_text}</strong>
+                    {sub.days_remaining !== undefined && (
+                      <div className="days-remaining">
+                        נותרו {sub.days_remaining} ימים
+                      </div>
+                    )}
+                    {sub.remaining_entries !== undefined && (
+                      <div className="entries-remaining">
+                        נותרו {sub.remaining_entries} אימונים
+                      </div>
+                    )}
+                  </div>
+                )
+              ))}
+            </div>
+          ) : (
+            <div className="no-subscription">
+              <div className="status-indicator invalid">❌ אין מנוי פעיל</div>
+              <p>אנא פנה למנהל כדי להפעיל מנוי</p>
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Notifications */}
       {notifications.length > 0 && (
         <div className="notifications-box">
