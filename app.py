@@ -28,6 +28,21 @@ CORS(
     expose_headers=["Content-Type", "Authorization"],
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
+
+# Additional explicit CORS headers for problematic endpoints
+@app.after_request
+def after_request(response):
+    origin = request.headers.get('Origin')
+    if origin in [
+        "https://gym-frontend-staging.netlify.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
@@ -341,20 +356,33 @@ def get_sessions():
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
         try:
-            # Try with session_type column first
+            # Enhanced query with member information
             c.execute('''
-                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, COUNT(us.user_id) as participant_count
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, 
+                       COUNT(us.user_id) as participant_count,
+                       STRING_AGG(u.email, ', ') as member_names
                 FROM session s
                 LEFT JOIN user_session us ON s.id = us.session_id
+                LEFT JOIN "user" u ON us.user_id = u.id
                 GROUP BY s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
                 ORDER BY s.date ASC, s.start_time ASC
             ''')
             sessions = [
-                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular', 'participants': row[6]}
+                {
+                    'id': row[0], 
+                    'date': str(row[1]), 
+                    'start_time': str(row[2]), 
+                    'end_time': str(row[3]), 
+                    'title': row[4], 
+                    'session_type': row[5] or 'regular', 
+                    'participants': row[6],
+                    'member_names': row[7] or ''
+                }
                 for row in c.fetchall()
             ]
-        except psycopg2.Error:
-            # Fallback to query without session_type column
+        except psycopg2.Error as e:
+            print(f"[ERROR] Database query failed: {e}")
+            # Fallback to simpler query
             c.execute('''
                 SELECT s.id, s.date, s.start_time, s.end_time, s.title, COUNT(us.user_id) as participant_count
                 FROM session s
@@ -363,7 +391,16 @@ def get_sessions():
                 ORDER BY s.date ASC, s.start_time ASC
             ''')
             sessions = [
-                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': 'regular', 'participants': row[5]}
+                {
+                    'id': row[0], 
+                    'date': str(row[1]), 
+                    'start_time': str(row[2]), 
+                    'end_time': str(row[3]), 
+                    'title': row[4], 
+                    'session_type': 'regular', 
+                    'participants': row[5],
+                    'member_names': ''
+                }
                 for row in c.fetchall()
             ]
     return jsonify({'sessions': sessions})
@@ -744,8 +781,10 @@ def delete_sessions_bulk(current_user):
     trainer = data.get('trainer')
     session_type = data.get('session_type')
     series = data.get('series')
+    
     filters = []
     params = []
+    
     if start_date:
         filters.append('date >= %s')
         params.append(start_date)
@@ -761,21 +800,45 @@ def delete_sessions_bulk(current_user):
     if series:
         filters.append('series = %s')
         params.append(series)
-    where_clause = ('WHERE ' + ' AND '.join(filters)) if filters else ''
+    
+    if not filters:
+        return jsonify({'error': 'At least one filter criteria must be provided'}), 400
+    
+    where_clause = 'WHERE ' + ' AND '.join(filters)
+    
     with psycopg2.connect(POSTGRES_URL) as conn:
         c = conn.cursor()
+        
+        # Debug: First check what sessions match the criteria
+        debug_query = f'SELECT id, date, title FROM session {where_clause}'
+        print(f"[DEBUG] Bulk delete query: {debug_query}")
+        print(f"[DEBUG] Bulk delete params: {params}")
+        c.execute(debug_query, tuple(params))
+        matching_sessions = c.fetchall()
+        print(f"[DEBUG] Found {len(matching_sessions)} sessions to delete: {matching_sessions}")
+        
+        if not matching_sessions:
+            return jsonify({'message': 'No sessions found matching the specified criteria', 'deleted_count': 0})
+        
         # Get session ids to delete
-        c.execute(f'SELECT id FROM session {where_clause}', tuple(params))
-        session_ids = [row[0] for row in c.fetchall()]
-        if not session_ids:
-            return jsonify({'message': 'No sessions found for deletion', 'deleted_count': 0})
-        # Delete user_session links
+        session_ids = [row[0] for row in matching_sessions]
+        
+        # Delete user_session links first
         c.execute('DELETE FROM user_session WHERE session_id = ANY(%s)', (session_ids,))
+        user_session_count = c.rowcount
+        print(f"[DEBUG] Deleted {user_session_count} user_session records")
+        
         # Delete sessions
         c.execute('DELETE FROM session WHERE id = ANY(%s)', (session_ids,))
         deleted_count = c.rowcount
+        print(f"[DEBUG] Deleted {deleted_count} session records")
+        
         conn.commit()
-    return jsonify({'message': f'Deleted {deleted_count} sessions', 'deleted_count': deleted_count})
+    
+    return jsonify({
+        'message': f'Successfully deleted {deleted_count} sessions and {user_session_count} user registrations', 
+        'deleted_count': deleted_count
+    })
 
 @app.route('/sessions/past', methods=['DELETE'])
 @token_required
@@ -1302,6 +1365,68 @@ def _update_subscription_usage(user_id, cursor):
                     SET remaining_entries = %s
                     WHERE id = %s
                 ''', (new_remaining, sub_id))
+
+@app.route('/user/subscription-status', methods=['GET'])
+@token_required
+def get_user_subscription_status(current_user):
+    """Get current user's subscription status and remaining usage"""
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Get all active subscriptions for the current user
+            c.execute('''
+                SELECT type, start_time, end_time, remaining_entries, is_active, created_at
+                FROM subscriptions 
+                WHERE user_id = %s AND is_active = TRUE
+                ORDER BY created_at DESC
+            ''', (current_user['id'],))
+            
+            subscriptions = c.fetchall()
+            subscription_status = []
+            
+            from datetime import datetime
+            now = datetime.now()
+            
+            for sub in subscriptions:
+                sub_type, start_time, end_time, remaining_entries, is_active, created_at = sub
+                
+                status = {
+                    'type': sub_type,
+                    'is_active': is_active,
+                    'start_time': start_time.isoformat() if start_time else None,
+                    'created_at': created_at.isoformat() if created_at else None
+                }
+                
+                if sub_type == 'monthly':
+                    if end_time:
+                        days_left = (end_time - now).days
+                        status['end_time'] = end_time.isoformat()
+                        status['days_remaining'] = max(0, days_left)
+                        status['status_text'] = f"Monthly subscription - {max(0, days_left)} days remaining"
+                        status['is_valid'] = days_left > 0
+                    else:
+                        status['status_text'] = "Monthly subscription - Invalid"
+                        status['is_valid'] = False
+                        
+                elif sub_type in ['one-time', '5-entries', '10-entries']:
+                    status['remaining_entries'] = remaining_entries or 0
+                    status['status_text'] = f"{sub_type.replace('-', ' ').title()} - {remaining_entries or 0} sessions remaining"
+                    status['is_valid'] = (remaining_entries or 0) > 0
+                
+                subscription_status.append(status)
+            
+            # Overall status
+            has_valid_subscription = any(sub['is_valid'] for sub in subscription_status if 'is_valid' in sub)
+            
+            return jsonify({
+                'has_valid_subscription': has_valid_subscription,
+                'subscriptions': subscription_status
+            }), 200
+    
+    except Exception as e:
+        print(f"[ERROR] get_user_subscription_status: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     from os import environ
