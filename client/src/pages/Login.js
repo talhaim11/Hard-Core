@@ -17,6 +17,7 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
+        console.log('🔧 LOGIN: Attempting to connect to:', `${API_BASE}/login`);
         const response = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
