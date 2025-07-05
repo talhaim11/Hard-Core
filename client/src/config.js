@@ -1,5 +1,5 @@
 // export const API_BASE = "https://gym-backend-staging.onrender.com"
-export const API_BASE = "http://localhost:5000"; // Uncomment for local development
+export const API_BASE = "http://192.168.68.100:5000"; // Network IP for phone access
 // export const API_BASE = "https://your-production-api.com"; // Uncomment for production deployment
 export const SOCKET_BASE = "https://gym-backend-staging.onrender.com/socket.io"; // Socket.io endpoint
 // export const SOCKET_BASE = "http://localhost:5000/socket.io"; // Uncomment for local development

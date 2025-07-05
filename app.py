@@ -22,7 +22,9 @@ CORS(
     origins=[
         "https://gym-frontend-staging.netlify.app",
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
+        "http://192.168.68.100:3000",
+        "http://192.168.68.102:3000"
     ],
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["Content-Type", "Authorization"],
@@ -36,7 +38,9 @@ def after_request(response):
     if origin in [
         "https://gym-frontend-staging.netlify.app",
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
+        "http://192.168.68.100:3000",
+        "http://192.168.68.102:3000"
     ]:
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
