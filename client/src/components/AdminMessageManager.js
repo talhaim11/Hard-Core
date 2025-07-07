@@ -11,7 +11,7 @@ const AdminMessageManager = ({ showNotification }) => {
   });
   const [loading, setLoading] = useState(true);
 
-  const loadMessages = async () => {
+  const loadMessages = React.useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchAdminMessages();
@@ -22,11 +22,11 @@ const AdminMessageManager = ({ showNotification }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showNotification]);
 
   useEffect(() => {
     loadMessages();
-  }, []);
+  }, [loadMessages]);
 
   const handleCreateMessage = async (e) => {
     e.preventDefault();
