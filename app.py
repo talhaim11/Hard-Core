@@ -181,18 +181,17 @@ def create_tables():
                 session_id INTEGER REFERENCES session(id) ON DELETE CASCADE,
                 UNIQUE(user_id, session_id)
             );
+        ''')        # Create admin_messages table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_messages (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                priority VARCHAR(20) DEFAULT 'normal',
+                duration_hours INTEGER DEFAULT 24,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES "user"(id)
+            )
         ''')
-    # Create admin_messages table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS admin_messages (
-            id SERIAL PRIMARY KEY,
-            content TEXT NOT NULL,
-            priority VARCHAR(20) DEFAULT 'normal',
-            duration_hours INTEGER DEFAULT 24,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_by INTEGER REFERENCES "user"(id)
-        )
-    ''')
         conn.commit()
         print("✅ Tables ensured.")
 
