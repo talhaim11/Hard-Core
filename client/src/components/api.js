@@ -230,6 +230,14 @@ export const deleteUser = async (userId) => {
   }
 };
 
+// Subscription-related API exports
+export const fetchUserSubscription = () => apiGet('/user/subscription-status');
+export const createSubscription = (subscriptionData) => apiPost('/subscriptions', subscriptionData);
+export const updateSubscription = (subscriptionId, subscriptionData) => apiPut(`/subscriptions/${subscriptionId}`, subscriptionData);
+export const deleteSubscription = (subscriptionId) => apiDelete(`/subscriptions/${subscriptionId}`);
+export const fetchAllSubscriptions = () => apiGet('/subscriptions');
+export const fetchUserSubscriptions = () => apiGet('/user/subscriptions');
+
 api.interceptors.response.use(
   res => res,
   err => {
