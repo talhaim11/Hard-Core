@@ -184,8 +184,8 @@
 }
 
 .settings-button {
-  background: #f8f9fa;
-  border: 2px solid #e9ecef;
+  background: #343a40;
+  border: 2px solid #495057;
   border-radius: 50%;
   width: 45px;
   height: 45px;
@@ -195,13 +195,15 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  color: white;
 }
 
 .settings-button:hover {
-  background: #e9ecef;
-  border-color: #1976d2;
+  background: #1976d2;
+  border-color: #0d47a1;
   transform: rotate(90deg);
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.4);
 }
 
 .settings-dropdown {
@@ -230,6 +232,41 @@
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   color: #495057;
+}
+
+.settings-stats {
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.settings-stats-title {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.8rem;
+  font-size: 0.95rem;
+}
+
+.settings-stats-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-stats-item {
+  font-size: 0.85rem;
+  color: #666;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.settings-stats-value {
+  font-weight: bold;
+  color: #1976d2;
 }
 
 .edit-profile-btn, .logout-dropdown-btn {

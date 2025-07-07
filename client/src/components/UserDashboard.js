@@ -194,11 +194,27 @@ const UserDashboard = () => {
         
         {/* Settings Dropdown */}
         {showSettings && (
-          <div className="settings-dropdown" ref={settingsRef}>
+          <div className="settings-dropdown">
             {profile && !editMode && (
               <div className="settings-profile-info">
                 <div><strong>שם משתמש:</strong> {profile.email}</div>
                 <div><strong>שם:</strong> {profile.name || '-'}</div>
+                
+                {/* Statistics in Settings */}
+                <div className="settings-stats">
+                  <div className="settings-stats-title">סטטיסטיקות</div>
+                  <div className="settings-stats-items">
+                    <div className="settings-stats-item">
+                      <span>סה"כ מפגשים שנכחת:</span>
+                      <span className="settings-stats-value">{sessions.length}</span>
+                    </div>
+                    <div className="settings-stats-item">
+                      <span>רצף נוכחות מקסימלי:</span>
+                      <span className="settings-stats-value">{maxStreak}</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <button 
                   className="edit-profile-btn"
                   onClick={() => {
@@ -285,13 +301,6 @@ const UserDashboard = () => {
         </div>
       )}
       
-      <div className="stats-section">
-        <h3>הסטטיסטיקות שלי</h3>
-        <div className="stats-box">
-          <div>סה"כ מפגשים שנכחת: {sessions.length}</div>
-          <div>רצף נוכחות מקסימלי: {maxStreak}</div>
-        </div>
-      </div>
       <div className="sessions-section">
         <h3>המפגשים שלי</h3>
         {sessions.length === 0 ? (
