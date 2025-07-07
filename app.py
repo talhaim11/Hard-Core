@@ -182,19 +182,17 @@ def create_tables():
                 UNIQUE(user_id, session_id)
             );
         ''')
-        # Create admin_messages table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS admin_messages (
-                id SERIAL PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                message TEXT NOT NULL,
-                priority VARCHAR(20) DEFAULT 'normal',
-                start_time TIMESTAMP,
-                end_time TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_by INTEGER REFERENCES "user"(id)
-            )
-        ''')
+    # Create admin_messages table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS admin_messages (
+            id SERIAL PRIMARY KEY,
+            content TEXT NOT NULL,
+            priority VARCHAR(20) DEFAULT 'normal',
+            duration_hours INTEGER DEFAULT 24,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by INTEGER REFERENCES "user"(id)
+        )
+    ''')
         conn.commit()
         print("✅ Tables ensured.")
 
@@ -1220,7 +1218,7 @@ def get_admin_messages():
         with psycopg2.connect(POSTGRES_URL) as conn:
             cur = conn.cursor()
             cur.execute('''
-                SELECT id, title, message, priority, start_time, end_time, created_at, created_by
+                SELECT id, content, priority, duration_hours, created_at, created_by
                 FROM admin_messages
                 ORDER BY created_at DESC
             ''')
@@ -1230,16 +1228,14 @@ def get_admin_messages():
             for msg in messages:
                 result.append({
                     'id': msg[0],
-                    'title': msg[1],
-                    'message': msg[2],
-                    'priority': msg[3],
-                    'start_time': msg[4].isoformat() if msg[4] else None,
-                    'end_time': msg[5].isoformat() if msg[5] else None,
-                    'created_at': msg[6].isoformat() if msg[6] else None,
-                    'created_by': msg[7]
+                    'content': msg[1],
+                    'priority': msg[2],
+                    'duration_hours': msg[3],
+                    'created_at': msg[4].isoformat() if msg[4] else None,
+                    'created_by': msg[5]
                 })
             
-            return jsonify(result), 200
+            return jsonify({'messages': result}), 200
             
     except Exception as e:
         print(f"[ERROR] get_admin_messages: {e}")
@@ -1251,14 +1247,12 @@ def create_admin_message():
     """Create a new admin message"""
     try:
         data = request.get_json()
-        title = data.get('title')
-        message = data.get('message')
+        content = data.get('content')
         priority = data.get('priority', 'normal')
-        start_time = data.get('start_time')
-        end_time = data.get('end_time')
+        duration_hours = data.get('duration_hours', 24)
         
-        if not title or not message:
-            return jsonify({'error': 'Title and message are required'}), 400
+        if not content:
+            return jsonify({'error': 'Content is required'}), 400
             
         # Get current user ID from token
         user_id = get_user_id_from_request()
@@ -1266,10 +1260,10 @@ def create_admin_message():
         with psycopg2.connect(POSTGRES_URL) as conn:
             cur = conn.cursor()
             cur.execute('''
-                INSERT INTO admin_messages (title, message, priority, start_time, end_time, created_by)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO admin_messages (content, priority, duration_hours, created_by)
+                VALUES (%s, %s, %s, %s)
                 RETURNING id
-            ''', (title, message, priority, start_time, end_time, user_id))
+            ''', (content, priority, duration_hours, user_id))
             
             message_id = cur.fetchone()[0]
             conn.commit()
@@ -1312,12 +1306,11 @@ def get_user_messages():
         with psycopg2.connect(POSTGRES_URL) as conn:
             cur = conn.cursor()
             cur.execute('''
-                SELECT id, title, message, priority
+                SELECT id, content, priority, duration_hours, created_at
                 FROM admin_messages
-                WHERE (start_time IS NULL OR start_time <= %s)
-                AND (end_time IS NULL OR end_time >= %s)
+                WHERE created_at + INTERVAL '1 hour' * duration_hours >= %s
                 ORDER BY priority DESC, created_at DESC
-            ''', (now, now))
+            ''', (now,))
             
             messages = cur.fetchall()
             
@@ -1325,9 +1318,10 @@ def get_user_messages():
             for msg in messages:
                 result.append({
                     'id': msg[0],
-                    'title': msg[1],
-                    'message': msg[2],
-                    'priority': msg[3]
+                    'content': msg[1],
+                    'priority': msg[2],
+                    'duration_hours': msg[3],
+                    'created_at': msg[4].isoformat() if msg[4] else None
                 })
             
             return jsonify(result), 200
