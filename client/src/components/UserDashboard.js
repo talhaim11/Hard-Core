@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
 import { API_BASE } from '../config';
 import axios from 'axios';
@@ -27,9 +27,21 @@ const UserDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [editProfile, setEditProfile] = useState({ name: '', email: '', password: '' });
-  const [achievements, setAchievements] = useState([]);
   const [activeDay, setActiveDay] = useState(new Date().getDay());
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef(null);
+
+  // Close settings dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Helper: get current week (Sun-Sat) and next week
   function getCurrentAndNextWeek(date) {
@@ -87,14 +99,10 @@ const UserDashboard = () => {
         });
         setSubscriptionStatus(subResponse.data);
         
-        // Simulate notifications and achievements (replace with API calls if available)
+        // Simulate notifications (replace with API calls if available)
         setNotifications([
           { id: 1, message: 'אימון חדש נוסף למערכת!', date: '2025-06-24' },
           { id: 2, message: 'זכית בתג "נוכחות 10"!', date: '2025-06-20' }
-        ]);
-        setAchievements([
-          { id: 1, label: '10 אימונים', achieved: sessionData.sessions.length >= 10 },
-          { id: 2, label: 'רצף 5 ימים', achieved: maxStreak >= 5 }
         ]);
       } catch (e) {
         console.error('Error loading data:', e);
@@ -102,7 +110,6 @@ const UserDashboard = () => {
         setProfile(null);
         setAllSessions([]);
         setNotifications([]);
-        setAchievements([]);
         setSubscriptionStatus(null);
       } finally {
         setLoading(false);
@@ -175,8 +182,62 @@ const UserDashboard = () => {
 
   return (
     <div className="user-dashboard">
+      {/* Settings Button */}
+      <div className="settings-button-container" ref={settingsRef}>
+        <button 
+          className="settings-button"
+          onClick={() => setShowSettings(!showSettings)}
+          title="הגדרות משתמש"
+        >
+          ⚙️
+        </button>
+        
+        {/* Settings Dropdown */}
+        {showSettings && (
+          <div className="settings-dropdown" ref={settingsRef}>
+            {profile && !editMode && (
+              <div className="settings-profile-info">
+                <div><strong>שם משתמש:</strong> {profile.email}</div>
+                <div><strong>שם:</strong> {profile.name || '-'}</div>
+                <button 
+                  className="edit-profile-btn"
+                  onClick={() => {
+                    handleProfileEdit();
+                    setShowSettings(false);
+                  }}
+                >
+                  ערוך פרופיל
+                </button>
+                <button 
+                  className="logout-dropdown-btn"
+                  onClick={handleLogout}
+                >
+                  התנתק
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="welcome-message">No pain, no gain.</div>
       <h2 style={{textAlign:'center', marginBottom:'2rem'}}>הדשבורד שלי</h2>
+      
+      {/* Profile Edit Modal */}
+      {editMode && (
+        <div className="profile-edit-modal">
+          <div className="profile-edit-content">
+            <h3>עריכת פרופיל</h3>
+            <label>שם: <input value={editProfile.name} onChange={e => setEditProfile({ ...editProfile, name: e.target.value })} /></label><br />
+            <label>שם משתמש: <input value={editProfile.email} onChange={e => setEditProfile({ ...editProfile, email: e.target.value })} /></label><br />
+            <label>סיסמה חדשה: <input type="password" value={editProfile.password} onChange={e => setEditProfile({ ...editProfile, password: e.target.value })} /></label><br />
+            <div className="profile-edit-buttons">
+              <button onClick={handleProfileSave}>שמור</button>
+              <button onClick={() => setEditMode(false)} style={{marginLeft:8}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Subscription Status */}
       {subscriptionStatus && (
@@ -223,40 +284,13 @@ const UserDashboard = () => {
           </ul>
         </div>
       )}
-      {/* Profile */}
-      {profile && !editMode && (
-        <div className="profile-box">
-          <div>שם משתמש: {profile.email}</div>
-          <div>שם: {profile.name || '-'}</div>
-          <button onClick={handleProfileEdit}>ערוך פרופיל</button>
-        </div>
-      )}
-      {editMode && (
-        <div className="profile-edit-box">
-          <label>שם: <input value={editProfile.name} onChange={e => setEditProfile({ ...editProfile, name: e.target.value })} /></label><br />
-          <label>שם משתמש: <input value={editProfile.email} onChange={e => setEditProfile({ ...editProfile, email: e.target.value })} /></label><br />
-          <label>סיסמה חדשה: <input type="password" value={editProfile.password} onChange={e => setEditProfile({ ...editProfile, password: e.target.value })} /></label><br />
-          <button onClick={handleProfileSave}>שמור</button>
-          <button onClick={() => setEditMode(false)} style={{marginLeft:8}}>ביטול</button>
-        </div>
-      )}
+      
       <div className="stats-section">
         <h3>הסטטיסטיקות שלי</h3>
         <div className="stats-box">
           <div>סה"כ מפגשים שנכחת: {sessions.length}</div>
           <div>רצף נוכחות מקסימלי: {maxStreak}</div>
         </div>
-      </div>
-      {/* Achievements */}
-      <div className="attendance-section">
-        <h3>הישגים</h3>
-        <ul className="achievements-list">
-          {achievements.map(a => (
-            <li key={a.id} style={{color: a.achieved ? 'green' : '#aaa'}}>
-              {a.label} {a.achieved ? '🏅' : ''}
-            </li>
-          ))}
-        </ul>
       </div>
       <div className="sessions-section">
         <h3>המפגשים שלי</h3>
@@ -357,8 +391,6 @@ const UserDashboard = () => {
         </ul>
         {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
       </div>
-      {/* Logout button at the bottom */}
-      <button className="logout-btn" onClick={handleLogout}>התנתק</button>
     </div>
   );
 };
