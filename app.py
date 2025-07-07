@@ -1297,7 +1297,7 @@ def delete_admin_message(message_id):
 
 @app.route('/user/messages', methods=['GET'])
 @token_required
-def get_user_messages():
+def get_user_messages(current_user):
     """Get active admin messages for users"""
     try:
         now = datetime.datetime.now()
@@ -1323,7 +1323,7 @@ def get_user_messages():
                     'created_at': msg[4].isoformat() if msg[4] else None
                 })
             
-            return jsonify(result), 200
+            return jsonify({'messages': result}), 200
             
     except Exception as e:
         print(f"[ERROR] get_user_messages: {e}")

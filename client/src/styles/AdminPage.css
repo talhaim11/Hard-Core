@@ -293,6 +293,105 @@ button {
   color: #040820;
 }
 
+/* Admin Header Styles */
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.messages-btn {
+  background: rgba(30, 144, 255, 0.1);
+  color: #1e90ff;
+  border: 1px solid #1e90ff;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  min-width: 60px;
+}
+
+.messages-btn:hover {
+  background: #1e90ff;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 144, 255, 0.3);
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #181818;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 80vw;
+  max-height: 80vh;
+  width: 600px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: #222;
+  border-bottom: 1px solid #333;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #1e90ff;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #fff;
+  background: #333;
+}
+
+.modal-body {
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
 @media (max-width: 600px) {
   .admin-content-card {
     padding: 1rem;
@@ -300,6 +399,19 @@ button {
   }
   .admin-section, .session-table-container {
     padding: 0.7rem 0.5rem;
+  }
+  .admin-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .modal-content {
+    max-width: 95vw;
+    max-height: 90vh;
+    width: auto;
+  }
+  .modal-header {
+    padding: 15px 20px;
   }
 }
 

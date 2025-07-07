@@ -24,7 +24,6 @@ const TABS = [
   { key: 'sessions', label: 'לוח מפגשים' },
   { key: 'users', label: 'ניהול משתמשים' },
   { key: 'tokens', label: 'ניהול טוקנים' },
-  { key: 'messages', label: 'הודעות מערכת' },
 ];
 
 const AdminPage = () => {
@@ -32,6 +31,7 @@ const AdminPage = () => {
   const [token, setToken] = useState(null);
   const [notification, setNotification] = useState({ message: '', type: 'info' });
   const [activeTab, setActiveTab] = useState('stats');
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -61,7 +61,16 @@ const AdminPage = () => {
       <div className="admin-content-card">
         {weightliftingSVG}
         <h1 style={{ textAlign: 'center' }}>Progress, not perfection.</h1>
-        <button className="logout-btn" onClick={handleLogout}>התנתק</button>
+        <div className="admin-header">
+          <button className="logout-btn" onClick={handleLogout}>התנתק</button>
+          <button 
+            className="messages-btn" 
+            onClick={() => setShowMessagesModal(true)}
+            title="הודעות מערכת"
+          >
+            הודעות
+          </button>
+        </div>
         <div className="admin-tabs" dir="rtl">
           {TABS.map(tab => (
             <button
@@ -98,14 +107,25 @@ const AdminPage = () => {
               <InviteTokenManager />
             </div>
           )}
-          {activeTab === 'messages' && (
-            <div className="admin-section" style={{ textAlign: 'right' }}>
-              <h2>הודעות מערכת</h2>
-              <AdminMessageManager showNotification={showNotification} />
-            </div>
-          )}
         </div>
       </div>
+      
+      {/* Messages Modal */}
+      {showMessagesModal && (
+        <div className="modal-overlay" onClick={() => setShowMessagesModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>הודעות מערכת</h2>
+              <button className="modal-close-btn" onClick={() => setShowMessagesModal(false)}>
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <AdminMessageManager showNotification={showNotification} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
