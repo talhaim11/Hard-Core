@@ -1,12 +1,12 @@
-# Node
-node_modules/
-build/
-.env
-
-# Python
+# Ignore compiled Python files
 __pycache__/
 *.pyc
-venv/
 
-# VS Code
-.vscode/
+# Ignore frontend build artifacts
+client/build/
+
+# Ignore environment files
+.env
+
+# Ignore node_modules
+node_modules/
