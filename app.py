@@ -31,22 +31,7 @@ CORS(
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 )
 
-# Additional explicit CORS headers for problematic endpoints
-@app.after_request
-def after_request(response):
-    origin = request.headers.get('Origin')
-    if origin in [
-        "https://gym-frontend-staging.netlify.app",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://192.168.68.100:3000",
-        "http://192.168.68.102:3000"
-    ]:
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# CORS is handled by the CORS() extension above
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
@@ -71,6 +56,31 @@ def token_required(f):
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
         return f(current_user, *args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Allow preflight OPTIONS requests to pass through without auth
+        if request.method == 'OPTIONS':
+            return '', 204
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[-1]
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = {
+              "id": data['sub'],
+              "role": data['role']
+            }
+            # Check if user is admin
+            if current_user['role'] != 'admin':
+                return jsonify({'message': 'Admin access required!'}), 403
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
+        return f(*args, **kwargs)
     return decorated
 
 # --- AUTH HELPERS ---
@@ -171,6 +181,19 @@ def create_tables():
                 session_id INTEGER REFERENCES session(id) ON DELETE CASCADE,
                 UNIQUE(user_id, session_id)
             );
+        ''')
+        # Create admin_messages table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_messages (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                priority VARCHAR(20) DEFAULT 'normal',
+                start_time TIMESTAMP,
+                end_time TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES "user"(id)
+            )
         ''')
         conn.commit()
         print("✅ Tables ensured.")
@@ -1185,6 +1208,146 @@ def reset_password():
         conn.commit()
     return jsonify({'message': 'Password reset successful'})
 
+# --- ADMIN MESSAGES MANAGEMENT ---
+@app.route('/admin/messages', methods=['GET', 'OPTIONS'])
+@admin_required
+def get_admin_messages():
+    """Get all admin messages"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, title, message, priority, start_time, end_time, created_at, created_by
+                FROM admin_messages
+                ORDER BY created_at DESC
+            ''')
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'title': msg[1],
+                    'message': msg[2],
+                    'priority': msg[3],
+                    'start_time': msg[4].isoformat() if msg[4] else None,
+                    'end_time': msg[5].isoformat() if msg[5] else None,
+                    'created_at': msg[6].isoformat() if msg[6] else None,
+                    'created_by': msg[7]
+                })
+            
+            return jsonify(result), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_admin_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages', methods=['POST'])
+@admin_required
+def create_admin_message():
+    """Create a new admin message"""
+    try:
+        data = request.get_json()
+        title = data.get('title')
+        message = data.get('message')
+        priority = data.get('priority', 'normal')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        
+        if not title or not message:
+            return jsonify({'error': 'Title and message are required'}), 400
+            
+        # Get current user ID from token
+        user_id = get_user_id_from_request()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO admin_messages (title, message, priority, start_time, end_time, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (title, message, priority, start_time, end_time, user_id))
+            
+            message_id = cur.fetchone()[0]
+            conn.commit()
+            
+            return jsonify({'id': message_id, 'message': 'Admin message created successfully'}), 201
+            
+    except Exception as e:
+        print(f"[ERROR] create_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages/<int:message_id>', methods=['DELETE', 'OPTIONS'])
+@admin_required
+def delete_admin_message(message_id):
+    """Delete an admin message"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM admin_messages WHERE id = %s', (message_id,))
+            
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Message not found'}), 404
+                
+            conn.commit()
+            return jsonify({'message': 'Admin message deleted successfully'}), 200
+            
+    except Exception as e:
+        print(f"[ERROR] delete_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user/messages', methods=['GET'])
+@token_required
+def get_user_messages():
+    """Get active admin messages for users"""
+    try:
+        now = datetime.datetime.now()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, title, message, priority
+                FROM admin_messages
+                WHERE (start_time IS NULL OR start_time <= %s)
+                AND (end_time IS NULL OR end_time >= %s)
+                ORDER BY priority DESC, created_at DESC
+            ''', (now, now))
+            
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'title': msg[1],
+                    'message': msg[2],
+                    'priority': msg[3]
+                })
+            
+            return jsonify(result), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_user_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def get_user_id_from_request():
+    """Helper function to get user ID from JWT token"""
+    try:
+        token = request.headers.get('Authorization')
+        if token and token.startswith('Bearer '):
+            token = token[7:]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            return payload.get('user_id')
+    except:
+        pass
+    return None
+
 # --- SUBSCRIPTION MANAGEMENT ---
 @app.route('/api/subscriptions', methods=['POST'])
 @token_required
@@ -1431,6 +1594,146 @@ def get_user_subscription_status(current_user):
     except Exception as e:
         print(f"[ERROR] get_user_subscription_status: {e}")
         return jsonify({'error': str(e)}), 500
+
+# Admin Messages Routes
+@app.route('/admin/messages', methods=['GET', 'OPTIONS'])
+@token_required
+def get_admin_messages():
+    """Get all admin messages"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, title, message, priority, start_time, end_time, created_at, created_by
+                FROM admin_messages
+                ORDER BY created_at DESC
+            ''')
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'title': msg[1],
+                    'message': msg[2],
+                    'priority': msg[3],
+                    'start_time': msg[4].isoformat() if msg[4] else None,
+                    'end_time': msg[5].isoformat() if msg[5] else None,
+                    'created_at': msg[6].isoformat() if msg[6] else None,
+                    'created_by': msg[7]
+                })
+            
+            return jsonify(result), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_admin_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages', methods=['POST'])
+@token_required
+def create_admin_message():
+    """Create a new admin message"""
+    try:
+        data = request.get_json()
+        title = data.get('title')
+        message = data.get('message')
+        priority = data.get('priority', 'normal')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        
+        if not title or not message:
+            return jsonify({'error': 'Title and message are required'}), 400
+            
+        # Get current user ID from token
+        user_id = get_user_id_from_request()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO admin_messages (title, message, priority, start_time, end_time, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (title, message, priority, start_time, end_time, user_id))
+            
+            message_id = cur.fetchone()[0]
+            conn.commit()
+            
+            return jsonify({'id': message_id, 'message': 'Admin message created successfully'}), 201
+            
+    except Exception as e:
+        print(f"[ERROR] create_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages/<int:message_id>', methods=['DELETE', 'OPTIONS'])
+@token_required
+def delete_admin_message(message_id):
+    """Delete an admin message"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM admin_messages WHERE id = %s', (message_id,))
+            
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Message not found'}), 404
+                
+            conn.commit()
+            return jsonify({'message': 'Admin message deleted successfully'}), 200
+            
+    except Exception as e:
+        print(f"[ERROR] delete_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user/messages', methods=['GET'])
+@token_required
+def get_user_messages():
+    """Get active admin messages for users"""
+    try:
+        now = datetime.datetime.now()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, title, message, priority
+                FROM admin_messages
+                WHERE (start_time IS NULL OR start_time <= %s)
+                AND (end_time IS NULL OR end_time >= %s)
+                ORDER BY priority DESC, created_at DESC
+            ''', (now, now))
+            
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'title': msg[1],
+                    'message': msg[2],
+                    'priority': msg[3]
+                })
+            
+            return jsonify(result), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_user_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def get_user_id_from_request():
+    """Helper function to get user ID from JWT token"""
+    try:
+        token = request.headers.get('Authorization')
+        if token and token.startswith('Bearer '):
+            token = token[7:]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            return payload.get('sub')
+    except:
+        pass
+    return None
 
 if __name__ == "__main__":
     from os import environ
