@@ -238,6 +238,12 @@ export const deleteSubscription = (subscriptionId) => apiDelete(`/subscriptions/
 export const fetchAllSubscriptions = () => apiGet('/subscriptions');
 export const fetchUserSubscriptions = () => apiGet('/user/subscriptions');
 
+// Admin Messages API exports
+export const fetchAdminMessages = () => apiGet('/admin/messages');
+export const createAdminMessage = (messageData) => apiPost('/admin/messages', messageData);
+export const deleteAdminMessage = (messageId) => apiDelete(`/admin/messages/${messageId}`);
+export const fetchUserMessages = () => apiGet('/user/messages');
+
 api.interceptors.response.use(
   res => res,
   err => {

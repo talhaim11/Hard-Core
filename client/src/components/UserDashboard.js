@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile } from './api';
+import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages } from './api';
 import { API_BASE } from '../config';
 import axios from 'axios';
 import '../styles/UserDashboard.css';
@@ -99,11 +99,8 @@ const UserDashboard = () => {
         });
         setSubscriptionStatus(subResponse.data);
         
-        // Simulate notifications (replace with API calls if available)
-        setNotifications([
-          { id: 1, message: 'אימון חדש נוסף למערכת!', date: '2025-06-24' },
-          { id: 2, message: 'זכית בתג "נוכחות 10"!', date: '2025-06-20' }
-        ]);
+        // Load user notifications (admin messages + blocked session alerts)
+        await loadNotifications(all.sessions || []);
       } catch (e) {
         console.error('Error loading data:', e);
         setSessions([]);
@@ -115,6 +112,70 @@ const UserDashboard = () => {
         setLoading(false);
       }
     };
+
+    const loadNotifications = async (allSessionsData) => {
+      const notificationsList = [];
+      
+      // 1. Check for blocked sessions today or tomorrow
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      
+      const blockedSessions = allSessionsData.filter(session => {
+        if (session.session_type !== 'blocked') return false;
+        
+        const sessionDate = new Date(session.date);
+        const todayStr = today.toDateString();
+        const tomorrowStr = tomorrow.toDateString();
+        const sessionStr = sessionDate.toDateString();
+        
+        return sessionStr === todayStr || sessionStr === tomorrowStr;
+      });
+      
+      blockedSessions.forEach(session => {
+        const sessionDate = new Date(session.date);
+        const isToday = sessionDate.toDateString() === today.toDateString();
+        const dateText = isToday ? 'היום' : 'מחר';
+        
+        notificationsList.push({
+          id: `blocked-${session.id}`,
+          message: 'שים לב, סשן חסום',
+          details: `${dateText} - ${session.start_time} עד ${session.end_time}`,
+          type: 'blocked',
+          priority: 'high'
+        });
+      });
+      
+      // 2. Fetch admin messages
+      try {
+        const adminMessages = await fetchUserMessages();
+        if (adminMessages && adminMessages.messages) {
+          adminMessages.messages.forEach(msg => {
+            notificationsList.push({
+              id: `admin-${msg.id}`,
+              message: msg.content,
+              type: 'admin',
+              priority: msg.priority || 'normal',
+              created_at: msg.created_at
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Error loading admin messages:', error);
+      }
+      
+      // 3. If no notifications, show default message
+      if (notificationsList.length === 0) {
+        notificationsList.push({
+          id: 'no-notifications',
+          message: 'אין הודעות חדשות',
+          type: 'default'
+        });
+      }
+      
+      setNotifications(notificationsList);
+    };
+    
     loadData();
     // eslint-disable-next-line
   }, []);
@@ -290,16 +351,22 @@ const UserDashboard = () => {
       )}
       
       {/* Notifications */}
-      {notifications.length > 0 && (
-        <div className="notifications-box">
-          <h4>הודעות</h4>
-          <ul>
-            {notifications.map(n => (
-              <li key={n.id}>{n.message} <span style={{fontSize:'0.8em',color:'#888'}}>({n.date})</span></li>
-            ))}
-          </ul>
+      <div className="notifications-box">
+        <h4>הודעות</h4>
+        <div className="notifications-list">
+          {notifications.map(n => (
+            <div key={n.id} className={`notification-item ${n.type || 'default'} priority-${n.priority || 'normal'}`}>
+              <div className="notification-message">{n.message}</div>
+              {n.details && <div className="notification-details">{n.details}</div>}
+              {n.created_at && (
+                <div className="notification-date">
+                  {new Date(n.created_at).toLocaleDateString('he-IL')}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      )}
+      </div>
       
       <div className="sessions-section">
         <h3>המפגשים שלי</h3>

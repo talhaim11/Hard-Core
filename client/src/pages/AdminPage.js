@@ -5,6 +5,7 @@ import Notification from '../components/Notification';
 import AdminStats from '../components/AdminStats';
 import InviteTokenManager from '../components/InviteTokenManager';
 import AdminUserManager from '../components/AdminUserManager';
+import AdminMessageManager from '../components/AdminMessageManager';
 import '../styles/AdminPage.css';
 
 const weightliftingSVG = (
@@ -23,6 +24,7 @@ const TABS = [
   { key: 'sessions', label: 'לוח מפגשים' },
   { key: 'users', label: 'ניהול משתמשים' },
   { key: 'tokens', label: 'ניהול טוקנים' },
+  { key: 'messages', label: 'הודעות מערכת' },
 ];
 
 const AdminPage = () => {
@@ -94,6 +96,12 @@ const AdminPage = () => {
             <div className="admin-section" style={{ textAlign: 'right' }}>
               <h2>ניהול טוקנים</h2>
               <InviteTokenManager />
+            </div>
+          )}
+          {activeTab === 'messages' && (
+            <div className="admin-section" style={{ textAlign: 'right' }}>
+              <h2>הודעות מערכת</h2>
+              <AdminMessageManager showNotification={showNotification} />
             </div>
           )}
         </div>
