@@ -68,13 +68,19 @@ const SessionTable = ({ token, showNotification }) => {
     const day = curr.getDay();
     const sunday = new Date(curr);
     sunday.setDate(curr.getDate() - day);
+    sunday.setHours(0, 0, 0, 0); // Ensure midnight for Sunday
     const saturday = new Date(sunday);
     saturday.setDate(sunday.getDate() + 6);
+    saturday.setHours(23, 59, 59, 999); // Ensure end of day for Saturday
+
     // Next week
     const nextSunday = new Date(sunday);
     nextSunday.setDate(sunday.getDate() + 7);
+    nextSunday.setHours(0, 0, 0, 0);
     const nextSaturday = new Date(nextSunday);
     nextSaturday.setDate(nextSunday.getDate() + 6);
+    nextSaturday.setHours(23, 59, 59, 999);
+
     return [ [sunday, saturday], [nextSunday, nextSaturday] ];
   }
 
