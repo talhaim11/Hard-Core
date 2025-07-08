@@ -5,7 +5,6 @@ import { API_BASE } from "../config";
 const BACKEND_URL = API_BASE || "https://gym-backend-staging.onrender.com";
 
 function Login({ setRole }) {
-    const [token, setToken] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
@@ -20,11 +19,11 @@ function Login({ setRole }) {
 
   const handleLogin = async () => {
     try {
-      console.log("Login payload:", { email, password, token }); // Add this line
-      const response = await fetch(`${BACKEND_URL}/login`, {
+        console.log('🔧 LOGIN: Attempting to connect to:', `${API_BASE}/login`);
+        const response = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, token }),
+        body: JSON.stringify({ email, password }),
         credentials: "include"
         });
 
@@ -47,30 +46,36 @@ function Login({ setRole }) {
   };
 
     return ( 
-    <div>
-        <h2>Login</h2>
-        <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        />
-        <br />
-        <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        />
-        <br />
-        <input
-        type="text"
-        placeholder="Access Token"
-        value={token}
-        onChange={e => setToken(e.target.value)}
-        />
-        <br />
+    <div className="login-page">
+      <div className="login-card">
+        <h1>Login</h1>
+        <label>
+          Username
+          <input
+            type="text"
+            placeholder="Username"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </label>
         <button onClick={handleLogin}>Login</button>
+        <div style={{textAlign: 'center', marginTop: '1rem'}}>
+          <span>New user? </span>
+          <a href="/register">Register here</a>
+        </div>
+        <div style={{textAlign: 'center', marginTop: '0.5rem'}}>
+          <a href="/reset-password">Forgot password?</a>
+        </div>
+      </div>
     </div>
     );
 }
@@ -78,9 +83,10 @@ function Login({ setRole }) {
 export default Login;
 
 // This code defines a simple login page for a React application.
-// It includes input fields for email, password, and an access token.
+// It includes input fields for email and password.
 // When the user clicks the "Login" button, it sends a POST request to the server with the provided credentials.
 // If the login is successful, it stores the token and role in local storage and navigates
 // the user to either the admin or user page based on their role.
 // If the login fails, it displays an alert with the error message.
 // Make sure to import this component in your main App.js file and set up the route for it.
+// A link to the registration page is also provided for new users.

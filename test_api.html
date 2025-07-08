@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Subscription API</title>
+</head>
+<body>
+    <h1>Test Subscription Status API</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="testSubscription()">Test Subscription Status</button>
+    <div id="output"></div>
+
+    <script>
+        let token = null;
+        
+        async function testLogin() {
+            try {
+                const response = await fetch('http://localhost:5000/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'itay',
+                        password: '123456'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Login response:', data);
+                document.getElementById('output').innerHTML += '<p>Login: ' + JSON.stringify(data) + '</p>';
+                
+                if (data.token) {
+                    token = data.token;
+                    console.log('Token saved:', token);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('output').innerHTML += '<p>Login Error: ' + error.message + '</p>';
+            }
+        }
+        
+        async function testSubscription() {
+            if (!token) {
+                alert('Please login first');
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5000/user/subscription-status', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Subscription response:', data);
+                document.getElementById('output').innerHTML += '<p>Subscription: ' + JSON.stringify(data, null, 2) + '</p>';
+            } catch (error) {
+                console.error('Subscription error:', error);
+                document.getElementById('output').innerHTML += '<p>Subscription Error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

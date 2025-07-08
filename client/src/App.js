@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/Login";
 import AdminPage from "./pages/AdminPage";
 import UserPage from "./pages/UserPage";
+import Register from "./pages/Register"; // Import Register page
+import ResetPassword from "./pages/ResetPassword";
+
 // import WorkoutBoard from './components/WorkoutBoard'; // Disabled: unused import
 
 // import { API_BASE } from "./config"; // Disabled: unused import
@@ -11,6 +14,7 @@ import './styles/AdminPage.css';
 import './styles/UserPage.css';
 import './styles/WorkoutBoard.css';
 import './styles/Login.css';
+import './styles/UserDashboard.css'; // Import UserDashboard styles
 
 
 function App() {
@@ -25,19 +29,18 @@ function App() {
   }, []);
 
    return ( 
-    
     <Router>
       <Routes>
         <Route path="/login" element={<Login setRole={setRole} />} />
         <Route path="/" element={<Login setRole={setRole} />} />
-
+        <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/admin"
           element={
             role === "admin" ? <AdminPage /> : role === null ? null : <Navigate to="/" />
           }
         />
-
         <Route
           path="/user"
           element={

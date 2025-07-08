@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE } from '../config';
+import { API_BASE } from '../config';   // כבר קיים אצלך
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -14,257 +14,76 @@ export const register = async (email, password, token, role) => {
   return response.data;
 };
 
-export const login = async (email, password, token) => {
-  const response = await api.post('/login', { email, password, token });
-  return response.data;
-};
-
-// --- Users ---
-export const fetchUsers = async () => {
-  const response = await api.get('/users');
-  return response.data;
-};
-
-// --- Sessions ---
-export const fetchSessions = async () => {
-  const response = await api.get('/sessions');
-  return response.data.sessions;
-};
-
-export const bookSession = async (date_time, token) => {
-  const response = await api.post('/book-session', { date_time }, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-export const createSession = async (sessionData, token) => {
-  const response = await api.post('/sessions', sessionData, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-export const cancelSession = async (sessionId, token) => {
-  const response = await api.delete(`/sessions/${sessionId}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-export const getSessionDetails = async (sessionId) => {
-  const response = await api.get(`/sessions/${sessionId}`);
-  return response.data;
-};
-
-// --- Me ---
-export const getMe = async (token) => {
-  const response = await api.get('/me', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-// --- Attendance ---
-export const getAttendance = async (token) => {
-  const response = await api.get('/attendance', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-export const setAttendance = async (attendanceData, token) => {
-  const response = await api.post('/attendance', attendanceData, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return response.data;
-};
-
-// --- Interceptor for 401 ---
-api.interceptors.response.use(
-  res => res,
-  err => {
-    if (err.response?.status === 401) {
-      localStorage.clear();
-      window.location = '/';
-    }
-    return Promise.reject(err);
-  }
-);
-  }
-};
-export const register = async (email, password, token, role) => {
+// --- DRY API HELPERS ---
+const apiGet = async (url) => {
   try {
-    const response = await api.post('/register', { email, password, token, role });
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
-    console.error('Error registering user:', error);
+    console.error(`Error fetching ${url}:`, error);
     throw error;
   }
 };
-export const login = async (email, password, token) => {
+const apiPost = async (url, data) => {
   try {
-    const response = await api.post('/login', { email, password, token });
+    const response = await api.post(url, data);
     return response.data;
   } catch (error) {
-    console.error('Error logging in:', error);
+    console.error(`Error posting to ${url}:`, error);
     throw error;
   }
 };
-export const logout = async () => {
+const apiPut = async (url, data) => {
   try {
-    const response = await api.post('/logout');
+    const response = await api.put(url, data);
     return response.data;
   } catch (error) {
-    console.error('Error logging out:', error);
+    console.error(`Error putting to ${url}:`, error);
     throw error;
   }
 };
-export const getUserProfile = async () => {
+const apiDelete = async (url) => {
   try {
-    const response = await api.get('/profile');
+    const response = await api.delete(url);
     return response.data;
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    throw error;
-  }
-};
-export const updateUserProfile = async (profileData) => {
-  try {
-    const response = await api.put('/profile', profileData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    throw error;
-  }
-};
-export const deleteUserProfile = async () => {
-  try {
-    const response = await api.delete('/profile');
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting user profile:', error);
-    throw error;
-  }
-};
-export const fetchUserSessions = async () => {
-  try {
-    const response = await api.get('/user/sessions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching user sessions:', error);
+    console.error(`Error deleting ${url}:`, error);
     throw error;
   }
 };
 
-export const registerForSession = async (sessionId) => {
-  try {
-    const response = await api.post(`/user/sessions/${sessionId}/register`);
-    return response.data;
-  } catch (error) {
-    console.error('Error registering for session:', error);
-    throw error;
-  }
-};
-export const cancelUserSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/user/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error cancelling user session:', error);
-    throw error;
-  }
-};
-export const fetchAdminDashboard = async () => {
-  try {
-    const response = await api.get('/admin/dashboard');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin dashboard:', error);
-    throw error;
-  }
-};
-export const fetchAdminUsers = async () => {
-  try {
-    const response = await api.get('/admin/users');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin users:', error);
-    throw error;
-  }
-};
-export const createAdminUser = async (userData) => {
-  try {
-    const response = await api.post('/admin/users', userData);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating admin user:', error);
-    throw error;
-  }
-};
-export const updateAdminUser = async (userId, userData) => {
-  try {
-    const response = await api.put(`/admin/users/${userId}`, userData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating admin user:', error);
-    throw error;
-  }
-};
-export const deleteAdminUser = async (userId) => {
-  try {
-    const response = await api.delete(`/admin/users/${userId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting admin user:', error);
-    throw error;
-  }
-};
-export const fetchAdminSessions = async () => {
-  try {
-    const response = await api.get('/admin/sessions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin sessions:', error);
-    throw error;
-  }
-};
-export const createAdminSession = async (sessionData) => {
-  try {
-    const response = await api.post('/admin/sessions', sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating admin session:', error);
-    throw error;
-  }
-};
-export const updateAdminSession = async (sessionId, sessionData) => {
-  try {
-    const response = await api.put(`/admin/sessions/${sessionId}`, sessionData);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating admin session:', error);
-    throw error;
-  }
-};
-export const deleteAdminSession = async (sessionId) => {
-  try {
-    const response = await api.delete(`/admin/sessions/${sessionId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting admin session:', error);
-    throw error;
-  }
-};
-export const fetchAdminReports = async () => {
-  try {
-    const response = await api.get('/admin/reports');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin reports:', error);
-    throw error;
-  }
-};
+// --- API EXPORTS (DRY) ---
+export const fetchUsers = () => apiGet('/users');
+export const addUser = (email, password, token, role) => apiPost('/register', { email, password, token, role });
+export const fetchSessions = () => apiGet('/sessions');
+export const registerSession = (sessionId) => apiPost(`/sessions/${sessionId}/register`);
+export const cancelSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
+export const createSession = (sessionData) => apiPost('/sessions', sessionData);
+export const updateSession = (sessionId, sessionData) => apiPut(`/sessions/${sessionId}`, sessionData);
+export const deleteSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
+// Bulk delete sessions by range/filter
+export const deleteSessionsBulk = (criteria) => api.delete('/sessions/bulk', { data: criteria }).then(res => res.data);
+// Delete all sessions older than 6 months
+export const deleteOldSessions = () => api.delete('/sessions/past').then(res => res.data);
+export const login = (email, password, token) => apiPost('/login', { email, password, token });
+export const logout = () => apiPost('/logout');
+export const getUserProfile = () => apiGet('/profile');
+export const updateUserProfile = (profileData) => apiPut('/profile', profileData);
+export const fetchUserNotifications = () => apiGet('/notifications').then(data => data.notifications);
+export const fetchUserAchievements = () => apiGet('/achievements').then(data => data.achievements);
+export const deleteUserProfile = () => apiDelete('/profile');
+export const fetchUserSessions = () => apiGet('/user/sessions');
+export const cancelUserSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
+export const fetchAdminDashboard = () => apiGet('/admin/dashboard');
+export const fetchAdminUsers = () => apiGet('/admin/users');
+export const createAdminUser = (userData) => apiPost('/admin/users', userData);
+export const updateAdminUser = (userId, userData) => apiPut(`/admin/users/${userId}`, userData);
+export const deleteAdminUser = (userId) => apiDelete(`/admin/users/${userId}`);
+export const fetchAdminSessions = () => apiGet('/admin/sessions');
+export const createAdminSession = (sessionData) => apiPost('/admin/sessions', sessionData);
+export const updateAdminSession = (sessionId, sessionData) => apiPut(`/admin/sessions/${sessionId}`, sessionData);
+export const deleteAdminSession = (sessionId) => apiDelete(`/admin/sessions/${sessionId}`);
+export const fetchAdminReports = () => apiGet('/admin/reports');
 export const generateAdminReport = async (reportType) => {
   try {
     const response = await api.post('/admin/reports', { reportType });
@@ -274,15 +93,7 @@ export const generateAdminReport = async (reportType) => {
     throw error;
   }
 };
-export const fetchAdminSettings = async () => {
-  try {
-    const response = await api.get('/admin/settings');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin settings:', error);
-    throw error;
-  }
-};
+export const fetchAdminSettings = () => apiGet('/admin/settings');
 export const updateAdminSettings = async (settingsData) => {
   try {
     const response = await api.put('/admin/settings', settingsData);
@@ -292,15 +103,7 @@ export const updateAdminSettings = async (settingsData) => {
     throw error;
   }
 };
-export const fetchAdminNotifications = async () => {
-  try {
-    const response = await api.get('/admin/notifications');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin notifications:', error);
-    throw error;
-  }
-};
+export const fetchAdminNotifications = () => apiGet('/admin/notifications');
 export const createAdminNotification = async (notificationData) => {
   try {
     const response = await api.post('/admin/notifications', notificationData);
@@ -328,33 +131,9 @@ export const deleteAdminNotification = async (notificationId) => {
     throw error;
   }
 };
-export const fetchAdminLogs = async () => {
-  try {
-    const response = await api.get('/admin/logs');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin logs:', error);
-    throw error;
-  }
-};
-export const fetchAdminAnalytics = async () => {
-  try {
-    const response = await api.get('/admin/analytics');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin analytics:', error);
-    throw error;
-  }
-};
-export const fetchAdminFeedback = async () => {
-  try {
-    const response = await api.get('/admin/feedback');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin feedback:', error);
-    throw error;
-  }
-};
+export const fetchAdminLogs = () => apiGet('/admin/logs');
+export const fetchAdminAnalytics = () => apiGet('/admin/analytics');
+export const fetchAdminFeedback = () => apiGet('/admin/feedback');
 export const createAdminFeedback = async (feedbackData) => {
   try {
     const response = await api.post('/admin/feedback', feedbackData);
@@ -382,15 +161,7 @@ export const deleteAdminFeedback = async (feedbackId) => {
     throw error;
   }
 };
-export const fetchAdminAnnouncements = async () => {
-  try {
-    const response = await api.get('/admin/announcements');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin announcements:', error);
-    throw error;
-  }
-};
+export const fetchAdminAnnouncements = () => apiGet('/admin/announcements');
 export const createAdminAnnouncement = async (announcementData) => {
   try {
     const response = await api.post('/admin/announcements', announcementData);
@@ -418,15 +189,7 @@ export const deleteAdminAnnouncement = async (announcementId) => {
     throw error;
   }
 };
-export const fetchAdminResources = async () => {
-  try {
-    const response = await api.get('/admin/resources');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching admin resources:', error);
-    throw error;
-  }
-};
+export const fetchAdminResources = () => apiGet('/admin/resources');
 export const createAdminResource = async (resourceData) => {
   try {
     const response = await api.post('/admin/resources', resourceData);
@@ -454,6 +217,29 @@ export const deleteAdminResource = async (resourceId) => {
     throw error;
   }
 };
+export const deleteUser = async (userId) => {
+  try {
+    const response = await api.delete(`/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
+};
+
+// Subscription-related API exports
+export const fetchUserSubscription = () => apiGet('/user/subscription-status');
+export const createSubscription = (subscriptionData) => apiPost('/subscriptions', subscriptionData);
+export const updateSubscription = (subscriptionId, subscriptionData) => apiPut(`/subscriptions/${subscriptionId}`, subscriptionData);
+export const deleteSubscription = (subscriptionId) => apiDelete(`/subscriptions/${subscriptionId}`);
+export const fetchAllSubscriptions = () => apiGet('/subscriptions');
+export const fetchUserSubscriptions = () => apiGet('/user/subscriptions');
+
+// Admin Messages API exports
+export const fetchAdminMessages = () => apiGet('/admin/messages');
+export const createAdminMessage = (messageData) => apiPost('/admin/messages', messageData);
+export const deleteAdminMessage = (messageId) => apiDelete(`/admin/messages/${messageId}`);
+export const fetchUserMessages = () => apiGet('/user/messages');
 
 api.interceptors.response.use(
   res => res,

@@ -1,93 +1,86 @@
-from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-import os
+
+import psycopg2
 import bcrypt
 import jwt
 import datetime
 from dotenv import load_dotenv
 load_dotenv()
 from functools import wraps
-import sys
+from flask import Flask, request, jsonify
+import jwt
 
-# --- CONSTANTS ---
-# טוקנים מותרים לדוגמה (במציאות, יש לאחסן אותם בצורה מאובטחת יותר)
-# לדוגמה, ניתן להשתמש ב-Redis או בבסיס נתונים אחר לאחסון טוקנים
-# כאן הם מאוחסנים במילון פשוט לצורך הדגמה   
-ALLOWED_TOKENS = {
-    "abc123": "user1@example.com",
-    "admin777": "admin@example.com",
-    "xyz999": "guest@example.com",
-    "itay777": "Itayshriker@gmail.com"
-}
-SECRET_KEY = "your_secret_key_here"  # ודא שהמפתח הסודי שלך תואם למה שמשמש ביצירת הטוקן
+
+# --- CONFIGURATION ---
+app = Flask(__name__)
+from flask_cors import CORS
+
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[
+        "https://gym-frontend-staging.netlify.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://192.168.68.100:3000",
+        "http://192.168.68.102:3000"
+    ],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
+
+# CORS is handled by the CORS() extension above
+print("🚀 Flask is starting...")
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+POSTGRES_URL = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL')
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow preflight OPTIONS requests to pass through without auth
+        if request.method == 'OPTIONS':
+            return '', 204
         token = None
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
-
+            token = request.headers['Authorization'].split(" ")[-1]
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
-
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = {
               "id": data['sub'],
               'role': data['role']  # <-- fixed line
             }
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
-
         return f(current_user, *args, **kwargs)
     return decorated
 
-
-
-
-# --- CONFIGURATION ---
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-db = SQLAlchemy(app)
-print("🚀 Flask is starting...")
-
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-
-# --- MODELS ---
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String, unique=True, nullable=False)
-    password = db.Column(db.String, nullable=False)
-    role = db.Column(db.String, default='user', nullable=False)
-
-class AllowedToken(db.Model):
-    token = db.Column(db.String, primary_key=True)
-    email = db.Column(db.String, unique=True, nullable=False)
-
-class Session(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    date_time = db.Column(db.String, unique=True, nullable=False)
-    title = db.Column(db.String)
-    location = db.Column(db.String)
-
-class UserSession(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    session_id = db.Column(db.Integer, db.ForeignKey('session.id'), nullable=False)
-    __table_args__ = (db.UniqueConstraint('user_id', 'session_id'),)
-
-class Attendance(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    date = db.Column(db.String, nullable=False)
-    hour = db.Column(db.Integer, nullable=False)
-    note = db.Column(db.String)
-    __table_args__ = (db.UniqueConstraint('user_id', 'date', 'hour'),)
-
-with app.app_context():
-    db.create_all()
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Allow preflight OPTIONS requests to pass through without auth
+        if request.method == 'OPTIONS':
+            return '', 204
+        token = None
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[-1]
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = {
+              "id": data['sub'],
+              "role": data['role']
+            }
+            # Check if user is admin
+            if current_user['role'] != 'admin':
+                return jsonify({'message': 'Admin access required!'}), 403
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
@@ -106,76 +99,235 @@ def decode_token(token):
     except jwt.ExpiredSignatureError:
         return None
 
+def add_location_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE session ADD COLUMN location TEXT DEFAULT NULL")
+            conn.commit()
+            print("✅ Column 'location' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e):
+                print("ℹ️ Column 'location' already exists.")
+            else:
+                raise e
+
+def add_title_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE session ADD COLUMN title TEXT DEFAULT NULL")
+            conn.commit()
+            print("✅ Column 'title' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e):
+                print("ℹ️ Column 'title' already exists.")
+            else:
+                raise e
+
+def add_name_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('ALTER TABLE "user" ADD COLUMN name TEXT DEFAULT NULL')
+            conn.commit()
+            print("✅ Column 'name' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e) or "already exists" in str(e):
+                print("ℹ️ Column 'name' already exists.")
+            else:
+                raise e
+
+def add_session_type_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE session ADD COLUMN session_type TEXT DEFAULT 'regular'")
+            conn.commit()
+            print("✅ Column 'session_type' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e) or "already exists" in str(e):
+                print("ℹ️ Column 'session_type' already exists.")
+            else:
+                raise e
+
+def create_tables():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS "user" (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
+            );
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS session (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                location TEXT,
+                session_type TEXT DEFAULT 'regular'
+            );
+        ''')
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS user_session (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
+                session_id INTEGER REFERENCES session(id) ON DELETE CASCADE,
+                UNIQUE(user_id, session_id)
+            );
+        ''')        # Create admin_messages table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_messages (
+                id SERIAL PRIMARY KEY,
+                content TEXT NOT NULL,
+                priority VARCHAR(20) DEFAULT 'normal',
+                duration_hours INTEGER DEFAULT 24,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER REFERENCES "user"(id)
+            )
+        ''')
+        conn.commit()
+        print("✅ Tables ensured.")
+
+def create_invite_token_table():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS invite_token (
+                id SERIAL PRIMARY KEY,
+                token TEXT UNIQUE NOT NULL,
+                email TEXT,
+                role TEXT NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+        conn.commit()
+        print("✅ Table 'invite_token' ensured.")
+
+# קריאה לפונקציות 
+# create_tables()
+# add_location_column()
+# add_title_column()
+# add_name_column()
+# add_session_type_column()
+create_invite_token_table()
+
+
 # --- ROUTES ---
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role', 'user')
     token = data.get('token')
 
-    if not token:
-        return jsonify({'error': 'Missing access token'}), 400
+    # Require and check invite token for registration
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, used, email, role FROM invite_token WHERE token = %s', (token,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'Invalid invite token'}), 401
+        if row[1]:
+            return jsonify({'error': 'Invite token already used'}), 401
+        if row[2] and row[2] != email:
+            return jsonify({'error': 'Token is for a different email'}), 401
+        role = row[3]  # Always use the role from the invite token
 
-    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-    try:
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already exists'}), 409
-        if AllowedToken.query.filter((AllowedToken.token == token) | (AllowedToken.email == email)).first():
-            return jsonify({'error': 'Token or email already used'}), 409
-
-        user = User(email=email, password=hashed_pw, role=role)
-        allowed_token = AllowedToken(token=token, email=email)
-        db.session.add(user)
-        db.session.add(allowed_token)
-        db.session.commit()
-        return jsonify({'message': 'User registered successfully'}), 201
-    except Exception as e:
-        return jsonify({'error': 'Registration failed', 'details': str(e)}), 400
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        try:
+            c.execute('INSERT INTO "user" (email, password, role) VALUES (%s, %s, %s)', (email, hashed_pw.decode('utf-8'), role))
+            c.execute('UPDATE invite_token SET used = TRUE WHERE id = %s', (row[0],))
+            conn.commit()
+            return jsonify({'message': 'User registered successfully', 'success': True}), 201
+        except Exception as e:
+            if 'unique constraint' in str(e).lower():
+                return jsonify({'error': 'Email already exists'}), 409
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
     print("DEBUG: /login route called", file=sys.stderr, flush=True)
     data = request.json
-    email = data.get('email')
+    email_or_username = data.get('email')
     password = data.get('password')
-    token = data.get('token')
 
-    print(f"DEBUG: login request email={email}, token={token}, password={password}", file=sys.stderr, flush=True)
+    print(f"[LOGIN] Received email/username: {email_or_username}")
+    print(f"[LOGIN] Received password: {password}")
 
-    allowed = AllowedToken.query.filter_by(token=token).first()
-    print(f"DEBUG: allowed_tokens row for token={token}: {allowed}", file=sys.stderr, flush=True)
-    if allowed:
-        print(f"DEBUG: allowed.email={allowed.email}", file=sys.stderr, flush=True)
-    else:
-        print("DEBUG: No allowed_token found for this token", file=sys.stderr, flush=True)
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Try to find user by email or username (since your DB uses both in the 'email' field)
+        c.execute('SELECT id, password, role FROM "user" WHERE email = %s OR email = %s', (email_or_username, email_or_username))
+        row = c.fetchone()
 
-    print(f"DEBUG: login email from request: '{email}'", file=sys.stderr, flush=True)
-    if not allowed or allowed.email.strip().lower() != email.strip().lower():
-        print("DEBUG: Token not found in allowed_tokens or email mismatch", file=sys.stderr, flush=True)
-        return jsonify({'error': 'Invalid token or email'}), 401
-
-    user = User.query.filter_by(email=email).first()
-    print(f"DEBUG: users row for email={email}: {user}", file=sys.stderr, flush=True)
-    if user:
-        print(f"DEBUG: user.password (hashed)={user.password}", file=sys.stderr, flush=True)
-        password_ok = bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
-        print(f"DEBUG: password_ok={password_ok}", file=sys.stderr, flush=True)
-        if password_ok:
-            token_jwt = encode_token(str(user.id), user.role)
-            return jsonify({'token': token_jwt, 'role': user.role})
-    else:
-        print("DEBUG: No user found for this email", file=sys.stderr, flush=True)
-    print("DEBUG: Invalid credentials", file=sys.stderr, flush=True)
-    return jsonify({'error': 'Invalid credentials'}), 401
+        if row:
+            db_hash = row[1]
+            print(f"[LOGIN] DB hash: {db_hash}")
+            check_result = bcrypt.checkpw(password.encode('utf-8'), db_hash.encode('utf-8') if isinstance(db_hash, str) else db_hash)
+            print(f"[LOGIN] bcrypt.checkpw result: {check_result}")
+            if check_result:
+                token = encode_token(row[0], row[2])
+                return jsonify({'token': token, 'role': row[2]})
+        return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/users', methods=['GET'])
 def get_users():
-    with db.session.no_autoflush:
-        users = User.query.all()
-    return jsonify([{'id': user.id, 'email': user.email, 'role': user.role} for user in users])
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, email, role FROM "user"')
+        users = [{'id': row[0], 'email': row[1], 'role': row[2]} for row in c.fetchall()]
+    return jsonify(users)
+
+@app.route('/debug-routes')
+def debug_routes():
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(sorted(rule.methods))
+        output.append(f"{rule.rule} [{methods}]")
+    return '<br>'.join(output)
+
+
+# Admin delete user by email (for InviteTokenManager)
+@app.route('/admin/users', methods=['DELETE', 'OPTIONS'])
+@token_required
+def admin_delete_user(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json()
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Get user id by email
+        c.execute('SELECT id FROM "user" WHERE email = %s', (email,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        user_id = row[0]
+        
+        # Delete from user_session first
+        c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+        
+        # Delete from attendance records
+        c.execute('DELETE FROM attendance WHERE user_id = %s', (user_id,))
+        
+        # Delete the user
+        c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+        
+        # Delete associated invite tokens
+        c.execute('DELETE FROM invite_token WHERE email = %s', (email,))
+        
+        conn.commit()
+    return jsonify({'message': 'User and associated tokens deleted successfully'})
+
 
 @app.route('/me', methods=['GET'])
 def me():
@@ -190,53 +342,92 @@ def me():
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
 
-@app.route('/book-session', methods=['POST'])
-def book_session():
-    data = request.json
-    token = request.headers.get('Authorization', '').replace('Bearer ', '')
-    payload = decode_token(token)
-    if not payload:
-        return jsonify({'error': 'Invalid or expired token'}), 401
-
-    user_id = payload['sub']
-    date_time = data.get('date_time')  # מחרוזת בפורמט ISO: "2024-07-22T19:00"
-
-    if not date_time:
-        return jsonify({'error': 'Missing date_time'}), 400
-
-    with db.session.no_autoflush:
-        # הכנס את האימון אם הוא לא קיים
-        session = Session.query.filter_by(date_time=date_time).first()
-        if not session:
-            session = Session(date_time=date_time)
-            db.session.add(session)
-            db.session.commit()
-
-        # נסה לרשום את המשתמש לאימון
-        user_session = UserSession.query.filter_by(user_id=user_id, session_id=session.id).first()
-        if user_session:
-            return jsonify({'error': 'Already registered for this session'}), 409
-
-        user_session = UserSession(user_id=user_id, session_id=session.id)
-        db.session.add(user_session)
-        db.session.commit()
-
-    return jsonify({'message': 'Session booked successfully'})
-
+# Legacy endpoint - commented out as it uses old schema
+# @app.route('/book-session', methods=['POST'])
+# def book_session():
+#     data = request.json
+#     token = request.headers.get('Authorization', '').replace('Bearer ', '')
+#     payload = decode_token(token)
+#     if not payload:
+#         return jsonify({'error': 'Invalid or expired token'}), 401
+# 
+#     user_id = payload['sub']
+#     date_time = data.get('date_time')  # מחרוזת בפורמט ISO: "2024-07-22T19:00"
+# 
+#     if not date_time:
+#         return jsonify({'error': 'Missing date_time'}), 400
+# 
+#     with psycopg2.connect(POSTGRES_URL) as conn:
+#         c = conn.cursor()
+# 
+#         # הכנס את האימון אם הוא לא קיים
+#         c.execute("INSERT INTO session (date_time) VALUES (%s) ON CONFLICT (date_time) DO NOTHING", (date_time,))
+#         conn.commit()
+# 
+#         # קבל את מזהה האימון
+#         c.execute("SELECT id FROM session WHERE date_time = %s", (date_time,))
+#         session_id = c.fetchone()[0]
+# 
+#         # נסה לרשום את המשתמש לאימון
+#         try:
+#             c.execute("INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)", (user_id, session_id))
+#             conn.commit()
+#             return jsonify({'message': 'Session booked successfully'})
+#         except psycopg2.IntegrityError:
+#             return jsonify({'error': 'Already registered for this session'}), 409
 @app.route('/sessions', methods=['GET'])
 def get_sessions():
-    with db.session.no_autoflush:
-        sessions = (
-            db.session.query(Session, db.func.count(UserSession.user_id).label('participant_count'))
-            .outerjoin(UserSession, Session.id == UserSession.session_id)
-            .group_by(Session.id, Session.date_time)
-            .order_by(Session.date_time.asc())
-            .all()
-        )
-    return jsonify([
-        {'id': session[0].id, 'date_time': session[0].date_time, 'participants': session.participant_count}
-        for session in sessions
-    ])
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            # Enhanced query with member information
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type, 
+                       COUNT(us.user_id) as participant_count,
+                       STRING_AGG(u.email, ', ') as member_names
+                FROM session s
+                LEFT JOIN user_session us ON s.id = us.session_id
+                LEFT JOIN "user" u ON us.user_id = u.id
+                GROUP BY s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
+                ORDER BY s.date ASC, s.start_time ASC
+            ''')
+            sessions = [
+                {
+                    'id': row[0], 
+                    'date': str(row[1]), 
+                    'start_time': str(row[2]), 
+                    'end_time': str(row[3]), 
+                    'title': row[4], 
+                    'session_type': row[5] or 'regular', 
+                    'participants': row[6],
+                    'member_names': row[7] or ''
+                }
+                for row in c.fetchall()
+            ]
+        except psycopg2.Error as e:
+            print(f"[ERROR] Database query failed: {e}")
+            # Fallback to simpler query
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, COUNT(us.user_id) as participant_count
+                FROM session s
+                LEFT JOIN user_session us ON s.id = us.session_id
+                GROUP BY s.id, s.date, s.start_time, s.end_time, s.title
+                ORDER BY s.date ASC, s.start_time ASC
+            ''')
+            sessions = [
+                {
+                    'id': row[0], 
+                    'date': str(row[1]), 
+                    'start_time': str(row[2]), 
+                    'end_time': str(row[3]), 
+                    'title': row[4], 
+                    'session_type': 'regular', 
+                    'participants': row[5],
+                    'member_names': ''
+                }
+                for row in c.fetchall()
+            ]
+    return jsonify({'sessions': sessions})
 
 @app.route('/sessions', methods=['POST'])
 @token_required
@@ -246,93 +437,236 @@ def create_session(payload):
 
     data = request.json
     title = data.get('title')
-    date_time = data.get('date_time')
-    location = data.get('location', 'Main Gym')  # ברירת מחדל
+    dates = data.get('dates')  # Array of dates in YYYY-MM-DD format
+    start_time = data.get('start_time')  # HH:MM format
+    end_time = data.get('end_time')  # HH:MM format
+    session_type = data.get('session_type', 'regular')  # 'regular' or 'blocked'
 
-    if not title or not date_time:
-        return jsonify({'error': 'Missing title or date_time'}), 400
+    if not title or not dates or not start_time or not end_time:
+        return jsonify({'error': 'Missing required fields: title, dates, start_time, end_time'}), 400
 
-    session = Session(title=title, date_time=date_time, location=location)
-    db.session.add(session)
-    db.session.commit()
+    created = []
+    skipped = []
+    deleted_sessions = []
+    
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        for date_str in dates:
+            try:
+                # Check for overlaps
+                overlapping = check_time_overlap(date_str, start_time, end_time)
+                
+                if overlapping:
+                    if session_type == 'blocked':
+                        # Delete overlapping regular sessions
+                        regular_sessions = [s for s in overlapping if s[4] != 'blocked']
+                        for session in regular_sessions:
+                            c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                            c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                            deleted_sessions.append(f"{session[1]} on {date_str}")
+                    else:
+                        # Check if there are blocked sessions preventing creation
+                        blocked_sessions = [s for s in overlapping if s[4] == 'blocked']
+                        if blocked_sessions:
+                            skipped.append({
+                                'date': date_str, 
+                                'reason': 'Time slot is blocked for personal trainer usage'
+                            })
+                            continue
+                        
+                        # Check for regular session overlaps
+                        regular_overlaps = [s for s in overlapping if s[4] != 'blocked']
+                        if regular_overlaps:
+                            skipped.append({
+                                'date': date_str, 
+                                'reason': f'Overlaps with existing session: {regular_overlaps[0][1]}'
+                            })
+                            continue
+                
+                # Create the session
+                c.execute("INSERT INTO session (title, date, start_time, end_time, session_type) VALUES (%s, %s, %s, %s, %s) RETURNING id", 
+                         (title, date_str, start_time, end_time, session_type))
+                session_id = c.fetchone()[0]
+                created.append({'date': date_str, 'id': session_id})
+                
+            except psycopg2.IntegrityError:
+                skipped.append({'date': date_str, 'reason': 'Database constraint violation'})
+        
+        conn.commit()
 
-    return jsonify({'message': 'Session created successfully'}), 201
+    response = {
+        'message': f'Created {len(created)} sessions, skipped {len(skipped)}',
+        'created': created,
+        'skipped': skipped
+    }
+    
+    if deleted_sessions:
+        response['deleted'] = deleted_sessions
+        response['message'] += f', deleted {len(deleted_sessions)} overlapping sessions'
+
+    return jsonify(response), 201
+
+
+@app.route('/invite-tokens/cleanup', methods=['POST'])
+@token_required
+def cleanup_invite_tokens(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Count tokens before cleanup
+        c.execute('SELECT COUNT(*) FROM invite_token')
+        before_count = c.fetchone()[0]
+        
+        # Only delete tokens that are truly orphaned:
+        # 1. Unused tokens with no email (free tokens)
+        c.execute('''
+            DELETE FROM invite_token 
+            WHERE used = FALSE AND (email IS NULL OR email = '')
+        ''')
+        
+        # 2. Used tokens where the user was deleted (orphaned tokens)
+        # But ONLY if there are actually users in the system to compare against
+        c.execute('SELECT COUNT(*) FROM "user"')
+        user_count = c.fetchone()[0]
+        
+        if user_count > 0:
+            c.execute('''
+                DELETE FROM invite_token 
+                WHERE used = TRUE AND email IS NOT NULL AND email != '' 
+                AND email NOT IN (SELECT email FROM "user")
+            ''')
+        
+        conn.commit()
+        
+        # Count tokens after cleanup
+        c.execute('SELECT COUNT(*) FROM invite_token')
+        after_count = c.fetchone()[0]
+        deleted_count = before_count - after_count
+        
+    return jsonify({
+        'message': f'Cleaned up {deleted_count} unused/orphaned tokens.',
+        'deleted_count': deleted_count,
+        'remaining_count': after_count,
+        'user_count': user_count
+    })
 
 
 @app.route('/sessions/<int:session_id>', methods=['GET'])
 def get_session_details(session_id):
-    with db.session.no_autoflush:
-        users = (
-            db.session.query(User)
-            .join(UserSession, User.id == UserSession.user_id)
-            .filter(UserSession.session_id == session_id)
-            .all()
-        )
-    return jsonify([{'id': user.id, 'email': user.email, 'role': user.role} for user in users])
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT u.id, u.email, u.role
+            FROM "user" u
+            JOIN user_session us ON u.id = us.user_id
+            WHERE us.session_id = %s
+        """, (session_id,))
+        users = [
+            {'id': row[0], 'email': row[1], 'role': row[2]}
+            for row in c.fetchall()
+        ]
+    return jsonify(users)
 
-@app.route('/sessions/<int:session_id>', methods=['DELETE'])
-@token_required
-def cancel_registration(current_user, session_id):
-    with db.session.no_autoflush:
-        user_session = UserSession.query.filter_by(user_id=current_user['id'], session_id=session_id).first()
-        if user_session:
-            db.session.delete(user_session)
-            db.session.commit()
-            return jsonify({'message': 'Registration cancelled successfully'})
-        return jsonify({'error': 'Registration not found'}), 404
+## Removed duplicate DELETE route for /sessions/<int:session_id> to allow admin delete_session to work
  
-@app.route('/sessions/<int:session_id>', methods=['POST'])
-@token_required
-def register_to_session(current_user, session_id):
-    with db.session.no_autoflush:
-        # בדיקה אם המשתמש כבר רשום
-        user_session = UserSession.query.filter_by(user_id=current_user['id'], session_id=session_id).first()
-        if user_session:
-            return jsonify({'message': 'Already registered for this session'}), 200
-
-        # רישום חדש
-        user_session = UserSession(user_id=current_user['id'], session_id=session_id)
-        db.session.add(user_session)
-        db.session.commit()
-
-    return jsonify({'message': 'Registered successfully'})
+# --- Helper for session registration ---
+def _handle_session_registration(current_user, session_id):
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            print(f"[DEBUG] Attempting to register user_id={current_user['id']} to session_id={session_id}")
+            # Check if user exists
+            c.execute('SELECT id FROM "user" WHERE id = %s', (current_user['id'],))
+            user_row = c.fetchone()
+            print(f"[DEBUG] User exists: {user_row}")
+            if not user_row:
+                return jsonify({'error': 'User does not exist'}), 404
+            # Check if session exists and get its type
+            c.execute('SELECT id, session_type FROM session WHERE id = %s', (session_id,))
+            session_row = c.fetchone()
+            print(f"[DEBUG] Session exists: {session_row}")
+            if not session_row:
+                return jsonify({'error': 'Session does not exist'}), 404
+            # Check if session is blocked
+            session_type = session_row[1] or 'regular'
+            if session_type == 'blocked':
+                return jsonify({'error': 'Cannot register for blocked sessions'}), 403
+            # Check if already registered
+            c.execute('SELECT * FROM user_session WHERE user_id = %s AND session_id = %s', (current_user['id'], session_id))
+            if c.fetchone():
+                print("[DEBUG] User already registered for this session")
+                return jsonify({'message': 'Already registered for this session'}), 200
+            
+            # *** NEW: Check if user has valid subscription ***
+            subscription_check = _check_user_subscription(current_user['id'], c)
+            if not subscription_check['valid']:
+                return jsonify({'error': subscription_check['message']}), 403
+            
+            # Register
+            c.execute('INSERT INTO user_session (user_id, session_id) VALUES (%s, %s)', (current_user['id'], session_id))
+            
+            # *** NEW: Update subscription usage ***
+            _update_subscription_usage(current_user['id'], c)
+            
+            conn.commit()
+            print("[DEBUG] Registration successful")
+        return jsonify({'message': 'Registered successfully'})
+    except Exception as e:
+        import traceback
+        print('[ERROR] Exception in _handle_session_registration:', e)
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/debug_users', methods=['GET'])
 def debug_users():
-    with db.session.no_autoflush:
-        users = User.query.all()
-    return jsonify({'users': [{'id': user.id, 'email': user.email} for user in users]})
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, email FROM "user"')
+        users = c.fetchall()
+    return jsonify({'users': users})
 
 @app.route('/debug_sessions', methods=['GET'])
 def debug_sessions():
-    with db.session.no_autoflush:
-        sessions = Session.query.all()
-    return jsonify({'sessions': [{'id': session.id, 'date_time': session.date_time} for session in sessions]})
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('SELECT id, date, start_time, end_time, title FROM session')
+            sessions = [{'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4]} for row in c.fetchall()]
+        except psycopg2.Error:
+            c.execute('SELECT id, date_time FROM session')
+            sessions = [{'id': row[0], 'date_time': row[1]} for row in c.fetchall()]
+    return jsonify({'sessions': sessions})
 
 @app.route('/debug_user_sessions', methods=['GET'])
 def debug_user_sessions():
-    with db.session.no_autoflush:
-        user_sessions = (
-            db.session.query(UserSession, User, Session)
-            .join(User, User.id == UserSession.user_id)
-            .join(Session, Session.id == UserSession.session_id)
-            .all()
-        )
-    return jsonify({
-        'user_sessions': [{
-            'id': us[0].id,
-            'user_email': us[1].email,
-            'session_date_time': us[2].date_time
-        } for us in user_sessions]
-    })
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('''
+                SELECT us.id, u.email, s.date, s.start_time, s.end_time, s.title
+                FROM user_session us
+                JOIN "user" u ON us.user_id = u.id
+                JOIN session s ON us.session_id = s.id
+            ''')
+            user_sessions = [{'id': row[0], 'email': row[1], 'date': str(row[2]), 'start_time': str(row[3]), 'end_time': str(row[4]), 'title': row[5]} for row in c.fetchall()]
+        except psycopg2.Error:
+            c.execute('''
+                SELECT us.id, u.email, s.date_time
+                FROM user_session us
+                JOIN "user" u ON us.user_id = u.id
+                JOIN session s ON us.session_id = s.id
+            ''')
+            user_sessions = [{'id': row[0], 'email': row[1], 'date_time': row[2]} for row in c.fetchall()]
+    return jsonify({'user_sessions': user_sessions})
 
 @app.route('/debug', methods=['GET'])
 def debug():
-    with db.session.no_autoflush:
-        # For PostgreSQL, use information_schema to list tables
-        tables = db.session.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-        ).fetchall()
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+        tables = c.fetchall()
     return jsonify({'tables': [table[0] for table in tables]})
 
 @app.route('/debug_token', methods=['GET'])
@@ -347,21 +681,14 @@ def debug_token():
 
     return jsonify({'user_id': payload['sub'], 'role': payload['role']})
 
-@app.route('/debug_allowed_tokens', methods=['GET'])
-def debug_allowed_tokens():
-    with db.session.no_autoflush:
-        tokens = AllowedToken.query.all()
-    return jsonify({token.token: token.email for token in tokens})
-
-@app.route('/debug_secret_key', methods=['GET'])
-def debug_secret_key():
-    return jsonify({'secret_key': app.config['SECRET_KEY']})
-
-
 @app.route('/debug_env', methods=['GET'])
 def debug_env():
     env_vars = {key: value for key, value in os.environ.items() if key.startswith('DEBUG_')}
     return jsonify(env_vars)
+
+@app.route('/debug_db_path', methods=['GET'])
+def debug_db_path():
+    return jsonify({'postgres_url': POSTGRES_URL})
 
 @app.route('/debug_bcrypt', methods=['GET'])
 def debug_bcrypt():
@@ -370,80 +697,924 @@ def debug_bcrypt():
     return jsonify({
         'test_password': test_password,
         'hashed_password': hashed.decode('utf-8'),
+
         'is_valid': bcrypt.checkpw(test_password.encode('utf-8'), hashed)
     })
 
+@app.route('/sessions/<int:session_id>/users', methods=['GET'])
+def get_session_users(session_id):
+    print(f"[DEBUG] get_session_users called for session_id={session_id}")
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT u.id, u.email, u.role
+            FROM "user" u
+            JOIN user_session us ON u.id = us.user_id
+            WHERE us.session_id = %s
+        ''', (session_id,))
+        rows = c.fetchall()
+        print(f"[DEBUG] Session {session_id} users query result: {rows}")
+        users = [
+            {'id': row[0], 'email': row[1], 'role': row[2]}
+            for row in rows
+        ]
+        print(f"[DEBUG] Session {session_id} users parsed: {users}")
+    return jsonify({'users': users})
 
+
+
+
+@app.route('/sessions/<int:session_id>', methods=['PUT'])
+@token_required
+def update_session(current_user, session_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    title = data.get('title')
+    date = data.get('date')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    session_type = data.get('session_type', 'regular')
+    
+    if not title or not date or not start_time or not end_time:
+        return jsonify({'error': 'Missing required fields: title, date, start_time, end_time'}), 400
+    
+    try:
+        # Check for overlaps (excluding the current session being updated)
+        overlapping = check_time_overlap(date, start_time, end_time, exclude_session_id=session_id)
+        
+        if overlapping:
+            if session_type == 'blocked':
+                # Delete overlapping regular sessions
+                deleted_sessions = []
+                with psycopg2.connect(POSTGRES_URL) as conn:
+                    c = conn.cursor()
+                    regular_sessions = [s for s in overlapping if s[4] != 'blocked']
+                    for session in regular_sessions:
+                        c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                        c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                        deleted_sessions.append(f"{session[1]} on {date}")
+                    
+                    # Update the current session
+                    c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s, session_type = %s WHERE id = %s",
+                              (title, date, start_time, end_time, session_type, session_id))
+                    conn.commit()
+                
+                response = {'message': 'Session updated successfully'}
+                if deleted_sessions:
+                    response['deleted'] = deleted_sessions
+                    response['message'] += f', deleted {len(deleted_sessions)} overlapping sessions'
+                return jsonify(response)
+            else:
+                # Check for blocked sessions preventing update
+                blocked_sessions = [s for s in overlapping if s[4] == 'blocked']
+                if blocked_sessions:
+                    return jsonify({'error': 'Cannot update: Time slot is blocked for personal trainer usage'}), 400
+                
+                # Check for regular session overlaps
+                regular_overlaps = [s for s in overlapping if s[4] != 'blocked']
+                if regular_overlaps:
+                    return jsonify({'error': f'Cannot update: Overlaps with existing session: {regular_overlaps[0][1]}'}), 400
+        
+        # No overlaps, proceed with update
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute("UPDATE session SET title = %s, date = %s, start_time = %s, end_time = %s, session_type = %s WHERE id = %s",
+                      (title, date, start_time, end_time, session_type, session_id))
+            conn.commit()
+        
+        return jsonify({'message': 'Session updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': f'Error updating session: {str(e)}'}), 500
+
+
+
+# --- BULK SESSION DELETION ENDPOINTS ---
+from dateutil.relativedelta import relativedelta
+
+@app.route('/sessions/bulk', methods=['DELETE'])
+@token_required
+def delete_sessions_bulk(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.get_json() or {}
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    trainer = data.get('trainer')
+    session_type = data.get('session_type')
+    series = data.get('series')
+    
+    filters = []
+    params = []
+    
+    if start_date:
+        filters.append('date >= %s')
+        params.append(start_date)
+    if end_date:
+        filters.append('date <= %s')
+        params.append(end_date)
+    if trainer:
+        filters.append('trainer = %s')
+        params.append(trainer)
+    if session_type:
+        filters.append('session_type = %s')
+        params.append(session_type)
+    if series:
+        filters.append('series = %s')
+        params.append(series)
+    
+    if not filters:
+        return jsonify({'error': 'At least one filter criteria must be provided'}), 400
+    
+    where_clause = 'WHERE ' + ' AND '.join(filters)
+    
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Debug: First check what sessions match the criteria
+        debug_query = f'SELECT id, date, title FROM session {where_clause}'
+        print(f"[DEBUG] Bulk delete query: {debug_query}")
+        print(f"[DEBUG] Bulk delete params: {params}")
+        c.execute(debug_query, tuple(params))
+        matching_sessions = c.fetchall()
+        print(f"[DEBUG] Found {len(matching_sessions)} sessions to delete: {matching_sessions}")
+        
+        if not matching_sessions:
+            return jsonify({'message': 'No sessions found matching the specified criteria', 'deleted_count': 0})
+        
+        # Get session ids to delete
+        session_ids = [row[0] for row in matching_sessions]
+        
+        # Delete user_session links first
+        c.execute('DELETE FROM user_session WHERE session_id = ANY(%s)', (session_ids,))
+        user_session_count = c.rowcount
+        print(f"[DEBUG] Deleted {user_session_count} user_session records")
+        
+        # Delete sessions
+        c.execute('DELETE FROM session WHERE id = ANY(%s)', (session_ids,))
+        deleted_count = c.rowcount
+        print(f"[DEBUG] Deleted {deleted_count} session records")
+        
+        conn.commit()
+    
+    return jsonify({
+        'message': f'Successfully deleted {deleted_count} sessions and {user_session_count} user registrations', 
+        'deleted_count': deleted_count
+    })
+
+@app.route('/sessions/past', methods=['DELETE'])
+@token_required
+def delete_old_sessions(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    # Delete sessions older than 6 months from today
+    cutoff = (datetime.date.today() - relativedelta(months=6)).isoformat()
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id FROM session WHERE date < %s', (cutoff,))
+        session_ids = [row[0] for row in c.fetchall()]
+        if not session_ids:
+            return jsonify({'message': 'No old sessions found', 'deleted_count': 0})
+        c.execute('DELETE FROM user_session WHERE session_id = ANY(%s)', (session_ids,))
+        c.execute('DELETE FROM session WHERE id = ANY(%s)', (session_ids,))
+        deleted_count = c.rowcount
+        conn.commit()
+    return jsonify({'message': f'Deleted {deleted_count} old sessions', 'deleted_count': deleted_count})
+
+@app.route('/sessions/<int:session_id>', methods=['DELETE'])
+@token_required
+def delete_session(current_user, session_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Delete all user registrations for this session
+        c.execute('DELETE FROM user_session WHERE session_id = %s', (session_id,))
+        # Delete the session itself
+        c.execute('DELETE FROM session WHERE id = %s', (session_id,))
+        deleted_count = c.rowcount
+        conn.commit()
+        if deleted_count == 0:
+            return jsonify({'error': 'Session not found or already deleted'}), 404
+        print(f"[DELETE] Deleted session_id={session_id}, deleted_count={deleted_count}")
+    return jsonify({'message': 'Session deleted successfully', 'deleted_count': deleted_count})
 
 @app.route('/users/<int:user_id>', methods=['DELETE'])
 @token_required
 def delete_user(current_user, user_id):
     if current_user['role'] != 'admin':
         return jsonify({'error': 'Unauthorized'}), 403
-    with db.session.no_autoflush:
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        db.session.delete(user)
-        db.session.commit()
-    return jsonify({'message': 'User deleted successfully'})
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if user exists first
+            c.execute('SELECT id, email FROM "user" WHERE id = %s', (user_id,))
+            user = c.fetchone()
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            print(f"Attempting to delete user {user_id} ({user[1]})")
+            
+            # First, try to delete user's session registrations
+            c.execute('SELECT COUNT(*) FROM user_session WHERE user_id = %s', (user_id,))
+            session_count = c.fetchone()[0]
+            print(f"User has {session_count} session registrations")
+            
+            if session_count > 0:
+                c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+                print(f"Deleted {c.rowcount} user_session records")
+            
+            # Delete attendance records
+            c.execute('DELETE FROM attendance WHERE user_id = %s', (user_id,))
+            attendance_count = c.rowcount
+            print(f"Deleted {attendance_count} attendance records")
+            
+            # Delete associated invite tokens
+            c.execute('DELETE FROM invite_token WHERE email = %s', (user[1],))
+            token_count = c.rowcount
+            print(f"Deleted {token_count} invite tokens")
+            
+            # Delete the user
+            c.execute('DELETE FROM "user" WHERE id = %s', (user_id,))
+            deleted_count = c.rowcount
+            print(f"Deleted {deleted_count} user records")
+            
+            if deleted_count == 0:
+                return jsonify({'error': 'User not found or already deleted'}), 404
+            
+            conn.commit()
+            print(f"Successfully deleted user {user_id}")
+            
+        return jsonify({'message': f'User {user[1]} deleted successfully'})
+        
+    except psycopg2.IntegrityError as e:
+        print(f"Integrity error deleting user {user_id}: {str(e)}")
+        return jsonify({'error': f'Cannot delete user due to data constraints: {str(e)}'}), 400
+        
+    except psycopg2.Error as e:
+        print(f"Database error deleting user {user_id}: {str(e)}")
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+        
+    except Exception as e:
+        print(f"Unexpected error deleting user {user_id}: {str(e)}")
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
-@app.route('/attendance', methods=['GET'])
+@app.route('/profile', methods=['GET', 'PUT'])
 @token_required
-def get_attendance(current_user):
-    # Get attendance for the next 2 weeks for all users
-    today = datetime.date.today()
-    start = today - datetime.timedelta(days=today.weekday()+1)  # Sunday of this week
-    end = start + datetime.timedelta(days=13)  # 2 weeks
-    with db.session.no_autoflush:
-        records = (
-            db.session.query(Attendance, User)
-            .join(User, User.id == Attendance.user_id)
-            .filter(db.func.date(Attendance.date) >= start, db.func.date(Attendance.date) <= end)
-            .all()
-        )
-    # Group by date and hour
-    attendance = {}
-    for record in records:
-        date = record.Attendance.date
-        hour = record.Attendance.hour
-        note = record.Attendance.note
-        email = record.User.email
-        user_id = record.User.id
-        attendance.setdefault(date, {}).setdefault(hour, []).append({
-            'email': email,
-            'user_id': user_id,
-            'note': note
-        })
-    return jsonify({'attendance': attendance, 'start': start.isoformat(), 'end': end.isoformat()})
-
-@app.route('/attendance', methods=['POST'])
-@token_required
-def set_attendance(current_user):
-    data = request.json
-    date = data.get('date')
-    hour = data.get('hour')
-    note = data.get('note', '')
+def user_profile(current_user):
     user_id = current_user['id']
-    if not date or hour is None:
-        return jsonify({'error': 'Missing date or hour'}), 400
-    with db.session.no_autoflush:
-        attendance_record = Attendance.query.filter_by(user_id=user_id, date=date, hour=hour).first()
-        if attendance_record:
-            attendance_record.note = note
-        else:
-            attendance_record = Attendance(user_id=user_id, date=date, hour=hour, note=note)
-            db.session.add(attendance_record)
-        db.session.commit()
-    return jsonify({'message': 'Attendance updated'})
+    if request.method == 'GET':
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute('SELECT email, role, name FROM "user" WHERE id = %s', (user_id,))
+            row = c.fetchone()
+            if not row:
+                return jsonify({'error': 'User not found'}), 404
+            return jsonify({'email': row[0], 'role': row[1], 'name': row[2] or ''})
+    elif request.method == 'PUT':
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        name = data.get('name')
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            if email:
+                c.execute('UPDATE "user" SET email = %s WHERE id = %s', (email, user_id))
+            if password:
+                hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_id))
+            if name is not None:
+                c.execute('UPDATE "user" SET name = %s WHERE id = %s', (name, user_id))
+            conn.commit()
+        return jsonify({'message': 'Profile updated'})
+
+@app.route('/notifications', methods=['GET'])
+@token_required
+def get_notifications(current_user):
+    # Example: return static notifications, replace with DB logic as needed
+    return jsonify({'notifications': [
+        {'id': 1, 'message': 'אימון חדש נוסף למערכת!', 'date': '2025-06-24'},
+        {'id': 2, 'message': 'זכית בתג "נוכחות 10"!', 'date': '2025-06-20'}
+    ]})
+
+@app.route('/achievements', methods=['GET'])
+@token_required
+def get_achievements(current_user):
+    # Example: return static achievements, replace with DB logic as needed
+    return jsonify({'achievements': [
+        {'id': 1, 'label': '10 אימונים', 'achieved': True},
+        {'id': 2, 'label': 'רצף 5 ימים', 'achieved': False}
+    ]})
+
+@app.route('/user/sessions', methods=['GET'])
+@token_required
+def get_user_sessions(current_user):
+    user_id = current_user['id']
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            # Try with new schema (date, start_time, end_time)
+            c.execute('''
+                SELECT s.id, s.date, s.start_time, s.end_time, s.title, s.session_type
+                FROM session s
+                JOIN user_session us ON s.id = us.session_id
+                WHERE us.user_id = %s
+                ORDER BY s.date ASC, s.start_time ASC
+            ''', (user_id,))
+            sessions = [
+                {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': row[5] or 'regular'}
+                for row in c.fetchall()
+            ]
+        except psycopg2.Error:
+            # Fallback to old schema for backward compatibility
+            try:
+                c.execute('''
+                    SELECT s.id, s.date, s.start_time, s.end_time, s.title
+                    FROM session s
+                    JOIN user_session us ON s.id = us.session_id
+                    WHERE us.user_id = %s
+                    ORDER BY s.date ASC, s.start_time ASC
+                ''', (user_id,))
+                sessions = [
+                    {'id': row[0], 'date': str(row[1]), 'start_time': str(row[2]), 'end_time': str(row[3]), 'title': row[4], 'session_type': 'regular'}
+                    for row in c.fetchall()
+                ]
+            except psycopg2.Error:
+                # Final fallback for very old schema
+                c.execute('''
+                    SELECT s.id, s.date_time, s.title, COALESCE(s.location, '') as location
+                    FROM session s
+                    JOIN user_session us ON s.id = us.session_id
+                    WHERE us.user_id = %s
+                    ORDER BY s.date_time ASC
+                ''', (user_id,))
+                sessions = [
+                    {'id': row[0], 'date_time': row[1], 'title': row[2], 'location': row[3], 'session_type': 'regular'}
+                    for row in c.fetchall()
+                ]
+    return jsonify({'sessions': sessions})
+
+@app.route('/sessions/<int:session_id>/register', methods=['POST'])
+@token_required
+def register_to_session_register(current_user, session_id):
+    return _handle_session_registration(current_user, session_id)
+
+@app.route('/invite-tokens', methods=['POST'])
+@token_required
+def create_invite_token(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    import secrets
+    token = data.get('token') or secrets.token_urlsafe(8)
+    email = data.get('email')
+    role = data.get('role', 'user')
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('INSERT INTO invite_token (token, email, role) VALUES (%s, %s, %s)', (token, email, role))
+            conn.commit()
+            return jsonify({'token': token, 'email': email, 'role': role}), 201
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/invite-tokens', methods=['GET'])
+@token_required
+def list_invite_tokens(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        c.execute('SELECT id, token, email, role, used, created_at FROM invite_token ORDER BY created_at DESC')
+        tokens = [
+            {'id': row[0], 'token': row[1], 'email': row[2], 'role': row[3], 'used': row[4], 'created_at': row[5].isoformat()}
+            for row in c.fetchall()
+        ]
+    return jsonify({'tokens': tokens})
+
+# Delete individual invite token
+@app.route('/invite-tokens/<int:token_id>', methods=['DELETE', 'OPTIONS'])
+@token_required
+def delete_invite_token(current_user, token_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Get token info before deletion
+        c.execute('SELECT id, email, used FROM invite_token WHERE id = %s', (token_id,))
+        token = c.fetchone()
+        if not token:
+            return jsonify({'error': 'Token not found'}), 404
+        
+        # Delete the token
+        c.execute('DELETE FROM invite_token WHERE id = %s', (token_id,))
+        conn.commit()
+        
+        return jsonify({
+            'message': f'Token deleted successfully',
+            'deleted_token': {
+                'id': token[0],
+                'email': token[1], 
+                'was_used': token[2]
+            }
+        })
+
+def check_time_overlap(date, start_time, end_time, exclude_session_id=None):
+    """Check if there's any time overlap with existing sessions on the same date"""
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        
+        # Convert times to comparable format
+        query = '''
+            SELECT id, title, start_time, end_time, session_type
+            FROM session 
+            WHERE date = %s 
+            AND (
+                (start_time < %s AND end_time > %s) OR  -- existing session overlaps with new session
+                (start_time < %s AND end_time > %s) OR  -- new session overlaps with existing session
+                (start_time >= %s AND end_time <= %s) OR -- existing session is within new session
+                (start_time <= %s AND end_time >= %s)    -- new session is within existing session
+            )
+        '''
+        params = [date, end_time, start_time, start_time, end_time, start_time, end_time, start_time, end_time]
+        
+        if exclude_session_id:
+            query += ' AND id != %s'
+            params.append(exclude_session_id)
+            
+        c.execute(query, params)
+        return c.fetchall()
+
+def handle_blocked_session_conflicts(date, start_time, end_time, session_type):
+    """Handle conflicts when creating a blocked session"""
+    if session_type == 'blocked':
+        # Check for overlapping regular sessions
+        overlapping = check_time_overlap(date, start_time, end_time)
+        regular_sessions_to_delete = [s for s in overlapping if s[4] != 'blocked']
+        
+        if regular_sessions_to_delete:
+            with psycopg2.connect(POSTGRES_URL) as conn:
+                c = conn.cursor()
+                for session in regular_sessions_to_delete:
+                    # Delete user registrations first
+                    c.execute('DELETE FROM user_session WHERE session_id = %s', (session[0],))
+                    # Delete the session
+                    c.execute('DELETE FROM session WHERE id = %s', (session[0],))
+                conn.commit()
+            
+            deleted_titles = [s[1] for s in regular_sessions_to_delete]
+            return {
+                'deleted_sessions': deleted_titles,
+                'message': f'Deleted {len(regular_sessions_to_delete)} overlapping regular sessions: {", ".join(deleted_titles)}'
+            }
+    
+    return None
+
+# Place this after app = Flask(__name__) and all configuration
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json
+    email = data.get('email')
+    token = data.get('token')
+    new_password = data.get('new_password')
+    if not email or not token or not new_password:
+        return jsonify({'error': 'Missing required fields'}), 400
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        # Check invite token
+        c.execute('SELECT id, used, email FROM invite_token WHERE token = %s', (token,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({'error': 'Invalid token'}), 400
+        if row[2] != email:
+            return jsonify({'error': 'Token does not match email'}), 400
+        # Check user exists
+        c.execute('SELECT id FROM "user" WHERE email = %s', (email,))
+        user_row = c.fetchone()
+        if not user_row:
+            return jsonify({'error': 'User not found'}), 404
+        # Update password
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        c.execute('UPDATE "user" SET password = %s WHERE id = %s', (hashed_pw.decode('utf-8'), user_row[0]))
+        conn.commit()
+    return jsonify({'message': 'Password reset successful'})
+
+# --- ADMIN MESSAGES MANAGEMENT ---
+@app.route('/admin/messages', methods=['GET', 'OPTIONS'])
+@admin_required
+def get_admin_messages():
+    """Get all admin messages"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, content, priority, duration_hours, created_at, created_by
+                FROM admin_messages
+                ORDER BY created_at DESC
+            ''')
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'content': msg[1],
+                    'priority': msg[2],
+                    'duration_hours': msg[3],
+                    'created_at': msg[4].isoformat() if msg[4] else None,
+                    'created_by': msg[5]
+                })
+            
+            return jsonify({'messages': result}), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_admin_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages', methods=['POST'])
+@admin_required
+def create_admin_message():
+    """Create a new admin message"""
+    try:
+        data = request.get_json()
+        content = data.get('content')
+        priority = data.get('priority', 'normal')
+        duration_hours = data.get('duration_hours', 24)
+        
+        if not content:
+            return jsonify({'error': 'Content is required'}), 400
+            
+        # Get current user ID from token
+        user_id = get_user_id_from_request()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                INSERT INTO admin_messages (content, priority, duration_hours, created_by)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            ''', (content, priority, duration_hours, user_id))
+            
+            message_id = cur.fetchone()[0]
+            conn.commit()
+            
+            return jsonify({'id': message_id, 'message': 'Admin message created successfully'}), 201
+            
+    except Exception as e:
+        print(f"[ERROR] create_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/messages/<int:message_id>', methods=['DELETE', 'OPTIONS'])
+@admin_required
+def delete_admin_message(message_id):
+    """Delete an admin message"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('DELETE FROM admin_messages WHERE id = %s', (message_id,))
+            
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Message not found'}), 404
+                
+            conn.commit()
+            return jsonify({'message': 'Admin message deleted successfully'}), 200
+            
+    except Exception as e:
+        print(f"[ERROR] delete_admin_message: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/user/messages', methods=['GET'])
+@token_required
+def get_user_messages(current_user):
+    """Get active admin messages for users"""
+    try:
+        now = datetime.datetime.now()
+        
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT id, content, priority, duration_hours, created_at
+                FROM admin_messages
+                WHERE created_at + INTERVAL '1 hour' * duration_hours >= %s
+                ORDER BY priority DESC, created_at DESC
+            ''', (now,))
+            
+            messages = cur.fetchall()
+            
+            result = []
+            for msg in messages:
+                result.append({
+                    'id': msg[0],
+                    'content': msg[1],
+                    'priority': msg[2],
+                    'duration_hours': msg[3],
+                    'created_at': msg[4].isoformat() if msg[4] else None
+                })
+            
+            return jsonify({'messages': result}), 200
+            
+    except Exception as e:
+        print(f"[ERROR] get_user_messages: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def get_user_id_from_request():
+    """Helper function to get user ID from JWT token"""
+    try:
+        token = request.headers.get('Authorization')
+        if token and token.startswith('Bearer '):
+            token = token[7:]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            return payload.get('user_id')
+    except:
+        pass
+    return None
+
+# --- SUBSCRIPTION MANAGEMENT ---
+@app.route('/api/subscriptions', methods=['POST'])
+@token_required
+def create_subscription(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.json
+    user_id = data.get('user_id')
+    sub_type = data.get('type')
+    
+    if not user_id or not sub_type:
+        return jsonify({'error': 'Missing user_id or type'}), 400
+    
+    # Calculate subscription parameters
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    
+    if sub_type == 'monthly':
+        end_time = now + timedelta(days=30)
+        remaining_entries = None
+    elif sub_type == 'one-time':
+        end_time = None
+        remaining_entries = 1
+    elif sub_type == '5-entries':
+        end_time = None
+        remaining_entries = 5
+    elif sub_type == '10-entries':
+        end_time = None
+        remaining_entries = 10
+    else:
+        return jsonify({'error': 'Invalid subscription type'}), 400
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if user exists
+            c.execute('SELECT id FROM "user" WHERE id = %s', (user_id,))
+            if not c.fetchone():
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Insert subscription
+            c.execute('''
+                INSERT INTO subscriptions (user_id, type, start_time, end_time, remaining_entries, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (user_id, sub_type, now, end_time, remaining_entries, True))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': f'Subscription {sub_type} created successfully'}), 201
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subscriptions/<int:user_id>', methods=['GET'])
+@token_required
+def get_user_subscriptions(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT id, user_id, type, start_time, end_time, remaining_entries, is_active, created_at
+                FROM subscriptions 
+                WHERE user_id = %s 
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            
+            rows = c.fetchall()
+            subscriptions = []
+            
+            for row in rows:
+                subscription = {
+                    'id': row[0],
+                    'user_id': row[1],
+                    'type': row[2],
+                    'start_time': row[3].isoformat() if row[3] else None,
+                    'end_time': row[4].isoformat() if row[4] else None,
+                    'remaining_entries': row[5],
+                    'is_active': row[6],
+                    'created_at': row[7].isoformat() if row[7] else None
+                }
+                subscriptions.append(subscription)
+            
+            return jsonify(subscriptions), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subscriptions/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user_subscriptions(current_user, user_id):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Delete all subscriptions for the user
+            c.execute('DELETE FROM subscriptions WHERE user_id = %s', (user_id,))
+            
+            # Also delete all user session entries
+            c.execute('DELETE FROM user_session WHERE user_id = %s', (user_id,))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'All subscriptions and session entries deleted'}), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- Helper functions for subscription validation ---
+def _check_user_subscription(user_id, cursor):
+    """Check if user has valid subscription for session registration"""
+    from datetime import datetime
+    
+    # Get all active subscriptions for the user
+    cursor.execute('''
+        SELECT type, start_time, end_time, remaining_entries, is_active
+        FROM subscriptions 
+        WHERE user_id = %s AND is_active = TRUE
+        ORDER BY created_at DESC
+    ''', (user_id,))
+    
+    subscriptions = cursor.fetchall()
+    
+    if not subscriptions:
+        return {'valid': False, 'message': 'No active subscriptions found. Please contact admin to activate a subscription.'}
+    
+    now = datetime.now()
+    
+    # Check each subscription
+    for sub in subscriptions:
+        sub_type, start_time, end_time, remaining_entries, is_active = sub
+        
+        if sub_type == 'monthly':
+            # Check if within 30-day window
+            if start_time <= now <= end_time:
+                return {'valid': True, 'message': 'Valid monthly subscription'}
+        
+        elif sub_type in ['one-time', '5-entries', '10-entries']:
+            # Check if has remaining entries
+            if remaining_entries and remaining_entries > 0:
+                return {'valid': True, 'message': f'Valid {sub_type} subscription with {remaining_entries} remaining'}
+    
+    return {'valid': False, 'message': 'No valid subscriptions found. Your subscriptions may have expired or run out of entries.'}
+
+def _update_subscription_usage(user_id, cursor):
+    """Update subscription usage after successful registration"""
+    from datetime import datetime
+    
+    # Get the most recent active subscription that has remaining entries
+    cursor.execute('''
+        SELECT id, type, remaining_entries
+        FROM subscriptions 
+        WHERE user_id = %s AND is_active = TRUE AND remaining_entries > 0
+        ORDER BY created_at DESC
+        LIMIT 1
+    ''', (user_id,))
+    
+    sub = cursor.fetchone()
+    
+    if sub:
+        sub_id, sub_type, remaining_entries = sub
+        
+        if sub_type in ['one-time', '5-entries', '10-entries']:
+            new_remaining = remaining_entries - 1
+            
+            if new_remaining <= 0:
+                # Deactivate subscription when no entries left
+                cursor.execute('''
+                    UPDATE subscriptions 
+                    SET remaining_entries = %s, is_active = FALSE
+                    WHERE id = %s
+                ''', (new_remaining, sub_id))
+            else:
+                # Update remaining entries
+                cursor.execute('''
+                    UPDATE subscriptions 
+                    SET remaining_entries = %s
+                    WHERE id = %s
+                ''', (new_remaining, sub_id))
+
+@app.route('/user/subscription-status', methods=['GET'])
+@token_required
+def get_user_subscription_status(current_user):
+    """Get current user's subscription status and remaining usage"""
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Get all active subscriptions for the current user
+            c.execute('''
+                SELECT type, start_time, end_time, remaining_entries, is_active, created_at
+                FROM subscriptions 
+                WHERE user_id = %s AND is_active = TRUE
+                ORDER BY created_at DESC
+            ''', (current_user['id'],))
+            
+            subscriptions = c.fetchall()
+            subscription_status = []
+            
+            from datetime import datetime
+            now = datetime.now()
+            
+            for sub in subscriptions:
+                sub_type, start_time, end_time, remaining_entries, is_active, created_at = sub
+                
+                status = {
+                    'type': sub_type,
+                    'is_active': is_active,
+                    'start_time': start_time.isoformat() if start_time else None,
+                    'created_at': created_at.isoformat() if created_at else None
+                }
+                
+                if sub_type == 'monthly':
+                    if end_time:
+                        days_left = (end_time - now).days
+                        status['end_time'] = end_time.isoformat()
+                        status['days_remaining'] = max(0, days_left)
+                        status['status_text'] = f"Monthly subscription - {max(0, days_left)} days remaining"
+                        status['is_valid'] = days_left > 0
+                    else:
+                        status['status_text'] = "Monthly subscription - Invalid"
+                        status['is_valid'] = False
+                        
+                elif sub_type in ['one-time', '5-entries', '10-entries']:
+                    status['remaining_entries'] = remaining_entries or 0
+                    status['status_text'] = f"{sub_type.replace('-', ' ').title()} - {remaining_entries or 0} sessions remaining"
+                    status['is_valid'] = (remaining_entries or 0) > 0
+                
+                subscription_status.append(status)
+            
+            # Overall status
+            has_valid_subscription = any(sub['is_valid'] for sub in subscription_status if 'is_valid' in sub)
+            
+            return jsonify({
+                'has_valid_subscription': has_valid_subscription,
+                'subscriptions': subscription_status
+            }), 200
+    
+    except Exception as e:
+        print(f"[ERROR] get_user_subscription_status: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
-@app.route('/ping', methods=['GET'])
-def ping():
-    print("DEBUG: /ping called", file=sys.stderr, flush=True)
-    return jsonify({"message": "pong"})
+            
+    except Exception as e:
+        print(f"[ERROR] get_user_messages: {e}")
+        return jsonify({'error': str(e)}), 500
 
+def get_user_id_from_request():
+    """Helper function to get user ID from JWT token"""
+    try:
+        token = request.headers.get('Authorization')
+        if token and token.startswith('Bearer '):
+            token = token[7:]
+            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            return payload.get('sub')
+    except:
+        pass
+    return None
 
 if __name__ == "__main__":
     from os import environ
+    print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")
+    # Try connecting to the database and print any errors
+    try:
+        create_tables()
+        add_session_type_column()
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            print("[STARTUP] Successfully connected to Postgres!")
+    except Exception as e:
+        print(f"[STARTUP] Failed to connect to Postgres: {e}")
     app.run(host='0.0.0.0', port=int(environ.get("PORT", 5000)))

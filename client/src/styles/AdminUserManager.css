@@ -17,17 +17,242 @@
 
 .user-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
   background-color: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-info {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.5rem;
 }
 
 .user-actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
-/* ...existing code for other styles (userForm, button, etc.) */
+.user-item button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.user-item button:hover {
+  background-color: #0056b3;
+}
+
+.user-item button.create-deal {
+  background-color: #28a745;
+}
+
+.user-item button.create-deal:hover {
+  background-color: #218838;
+}
+
+.user-item button.view-deals {
+  background-color: #17a2b8;
+}
+
+.user-item button.view-deals:hover {
+  background-color: #138496;
+}
+
+.user-item ul {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  list-style-type: disc;
+}
+
+.user-search {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.delete-user-btn {
+  background: #dc3545 !important;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.delete-user-btn:hover {
+  background: #c82333 !important;
+}
+
+/* Message styling */
+.message {
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Subscription button styles */
+.create-subscription {
+  background-color: #28a745 !important;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.create-subscription:hover {
+  background-color: #218838 !important;
+}
+
+.create-subscription.monthly {
+  background-color: #007bff !important;
+}
+
+.create-subscription.monthly:hover {
+  background-color: #0056b3 !important;
+}
+
+.create-subscription.one-time {
+  background-color: #ffc107 !important;
+  color: #212529;
+}
+
+.create-subscription.one-time:hover {
+  background-color: #e0a800 !important;
+}
+
+.create-subscription.five-entries {
+  background-color: #17a2b8 !important;
+}
+
+.create-subscription.five-entries:hover {
+  background-color: #138496 !important;
+}
+
+.create-subscription.ten-entries {
+  background-color: #6f42c1 !important;
+}
+
+.create-subscription.ten-entries:hover {
+  background-color: #59359a !important;
+}
+
+.view-details {
+  background-color: #17a2b8 !important;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.view-details:hover {
+  background-color: #138496 !important;
+}
+
+.delete-subscriptions-btn {
+  background-color: #fd7e14 !important;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.delete-subscriptions-btn:hover {
+  background-color: #e8590c !important;
+}
+
+/* Subscription details styling */
+.subscription-details {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.subscription-details h4 {
+  margin: 0 0 0.5rem 0;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.subscription-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.subscription-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background-color: #fff;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  margin-bottom: 0.5rem;
+}
+
+.subscription-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+/* Disabled button styling */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .user-actions {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .user-item button {
+    width: 100%;
+    text-align: center;
+  }
+}

@@ -1,39 +1,93 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../config';
 import '../styles/AdminUserManager.css';
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [token, setToken] = useState('');
-  const [role, setRole] = useState('user');
+  const [search, setSearch] = useState('');
+  const [subscriptions, setSubscriptions] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("https://hard-core.onrender.com/users", {
-        headers: { Authorization: localStorage.getItem("token") },
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(res.data);
+      // The backend returns a plain array, not { users: [...] }
+      setUsers(Array.isArray(res.data) ? res.data : (res.data.users || []));
     } catch (err) {
       console.error("Failed to fetch users", err);
+      setMessage('Failed to fetch users');
     }
   };
 
-  const addUser = async () => {
+  const fetchSubscriptions = async (userId) => {
     try {
-      await axios.post("https://hard-core.onrender.com/register", {
-        email,
-        password,
-        token,
-        role,
-      }, {
-        headers: { Authorization: localStorage.getItem("token") },
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/api/subscriptions/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setEmail(''); setPassword(''); setToken('');
+      setSubscriptions(prevSubs => ({ ...prevSubs, [userId]: res.data }));
+    } catch (err) {
+      console.error("Failed to fetch subscriptions", err);
+      setMessage('Failed to fetch subscriptions');
+    }
+  };
+
+  const deleteUserHandler = async (userId) => {
+    if (!window.confirm('Delete this user?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage('User deleted successfully!');
       fetchUsers();
     } catch (err) {
-      alert("שגיאה בהוספת המשתמש");
+      console.error("Error deleting user:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete user';
+      setMessage(`Failed to delete user: ${errorMsg}`);
+    }
+  };
+
+  const createSubscriptionHandler = async (userId, subscriptionType) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_BASE}/api/subscriptions`, 
+        { user_id: userId, type: subscriptionType }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage(`${subscriptionType} subscription created successfully!`);
+      fetchSubscriptions(userId);
+    } catch (err) {
+      console.error("Error creating subscription:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to create subscription';
+      setMessage(`Failed to create subscription: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteSubscriptionsHandler = async (userId) => {
+    if (!window.confirm('Delete all subscriptions and session entries for this user?')) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/api/subscriptions/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMessage('All subscriptions and session entries deleted successfully!');
+      setSubscriptions(prev => ({ ...prev, [userId]: [] }));
+    } catch (err) {
+      console.error("Error deleting subscriptions:", err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete subscriptions';
+      setMessage(`Failed to delete subscriptions: ${errorMsg}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,41 +95,114 @@ export default function AdminPanel() {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  // Debug: log users and filteredUsers
+  console.log('All users:', users);
+  const filteredUsers = users.filter(u =>
+    (u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
+    (u.role && u.role.toLowerCase().includes(search.toLowerCase()))
+  );
+  console.log('Filtered users:', filteredUsers);
+
   return (
     <div className="admin-user-manager">
       <h2>ניהול משתמשים</h2>
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} /><br />
-      <input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} type="password" /><br />
-      <input placeholder="Access Token" value={token} onChange={e => setToken(e.target.value)} /><br />
-      <select value={role} onChange={e => setRole(e.target.value)}>
-        <option value="user">User</option>
-        <option value="admin">Admin</option>
-      </select><br />
-      <button onClick={addUser}>הוסף משתמש</button>
-
-      <h3>משתמשים רשומים:</h3>
-      <ul className="user-list">
-        {users.map((u, i) => (
+      
+      {message && (
+        <div className={`message ${message.includes('Failed') ? 'error' : 'success'}`}>
+          {message}
+        </div>
+      )}
+      
+      <h3 className="user-list-label">משתמשים רשומים:</h3>
+      <input
+        type="text"
+        className="user-search"
+        placeholder="חפש משתמש..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{marginBottom: '0.5rem', width: '90%'}}
+      />
+      
+      <ul className="user-list scrollable-user-list">
+        {filteredUsers.map((u, i) => (
           <li key={i} className="user-item">
-            {u.email} ({u.role})
-            <button
-              className="delete-user-btn"
-              onClick={async () => {
-                if (window.confirm(`Are you sure you want to delete ${u.email}?`)) {
-                  try {
-                    await axios.delete(`https://hard-core.onrender.com/users/${u.id}`, {
-                      headers: { Authorization: localStorage.getItem("token") },
-                    });
-                    fetchUsers();
-                  } catch (err) {
-                    alert("שגיאה במחיקת המשתמש");
-                  }
-                }
-              }}
-              style={{ marginLeft: 8 }}
-            >
-              מחק
-            </button>
+            <div className="user-info">{u.email} ({u.role})</div>
+            <div className="user-actions">
+              <button 
+                className="view-details" 
+                onClick={() => fetchSubscriptions(u.id)}
+                disabled={loading}
+              >
+                View Details
+              </button>
+              <button 
+                className="create-subscription monthly" 
+                onClick={() => createSubscriptionHandler(u.id, 'monthly')}
+                disabled={loading}
+              >
+                Create Monthly Subscription
+              </button>
+              <button 
+                className="create-subscription one-time" 
+                onClick={() => createSubscriptionHandler(u.id, 'one-time')}
+                disabled={loading}
+              >
+                Create One-Time Entry
+              </button>
+              <button 
+                className="create-subscription five-entries" 
+                onClick={() => createSubscriptionHandler(u.id, '5-entries')}
+                disabled={loading}
+              >
+                Create 5 Entries
+              </button>
+              <button 
+                className="create-subscription ten-entries" 
+                onClick={() => createSubscriptionHandler(u.id, '10-entries')}
+                disabled={loading}
+              >
+                Create 10 Entries
+              </button>
+              <button 
+                className="delete-subscriptions-btn" 
+                onClick={() => deleteSubscriptionsHandler(u.id)}
+                disabled={loading}
+              >
+                Delete Subscriptions Options
+              </button>
+              <button 
+                className="delete-user-btn" 
+                onClick={() => deleteUserHandler(u.id)}
+                disabled={loading}
+              >
+                🗑️ Delete User
+              </button>
+            </div>
+            {subscriptions[u.id] && (
+              <div className="subscription-details">
+                <h4>Subscriptions:</h4>
+                <ul className="subscription-list">
+                  {subscriptions[u.id].map((sub, j) => (
+                    <li key={j} className="subscription-item">
+                      <strong>{sub.type}</strong>
+                      <span className="subscription-info">
+                        Started: {new Date(sub.start_time).toLocaleDateString()}
+                        {sub.end_time && ` | Expires: ${new Date(sub.end_time).toLocaleDateString()}`}
+                        {sub.remaining_entries && ` | Remaining: ${sub.remaining_entries}`}
+                        {sub.is_active ? ' | Active' : ' | Inactive'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -83,18 +210,3 @@ export default function AdminPanel() {
   );
 }
 
-// This component allows an admin to manage users, including adding new users and viewing the list of registered users.
-// It uses axios to make API calls to the backend for user management.
-// The component maintains state for the list of users, as well as form inputs for adding a new user.
-// The `fetchUsers` function retrieves the list of users from the backend and updates the state.
-// The `addUser` function sends a POST request to add a new user with the provided email, password, token, and role.
-// The component renders a form for adding a new user and displays the list of registered users.
-// Note: Make sure to replace the API endpoint with your actual backend URL if different.
-// Ensure you have axios installed in your project: npm install axios
-// Make sure to handle errors appropriately in a production application.
-// This code is a React component for an admin panel that allows user management.
-// It includes functionality to add new users and display a list of registered users.
-// Ensure you have the necessary backend API endpoints set up to handle user management requests.
-// This code is a React component for an admin panel that allows user management.
-// It includes functionality to add new users and display a list of registered users.
-// Ensure you have the necessary backend API endpoints set up to handle user management requests.

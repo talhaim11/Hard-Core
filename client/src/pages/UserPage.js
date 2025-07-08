@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UserDashboard from '../components/UserDashboard';
 
 const UserPage = () => {
   const navigate = useNavigate();
@@ -13,16 +14,9 @@ const UserPage = () => {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-    navigate('/login');
-  };
-
   return (
     <div style={{ padding: '20px' }}>
-      <h1>ברוך הבא, משתמש!</h1>
-      <button onClick={handleLogout}>התנתק</button>
+      <UserDashboard />
     </div>
   );
 };
