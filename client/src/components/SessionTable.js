@@ -112,6 +112,13 @@ const SessionTable = ({ token, showNotification }) => {
         });
       }
       
+      // Additional debug logging for Sunday sessions
+      console.log('🔍 DEBUG: Checking session.date format:', {
+        sessionDate: session.date,
+        parsedDate: d,
+        isValidDate: !isNaN(d.getTime()),
+      });
+      
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
