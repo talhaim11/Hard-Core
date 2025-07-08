@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import CustomTimeInput from './CustomTimeInput';
 
 const MAX_MONTHS_AHEAD = 3;
 const frequencies = [
@@ -150,27 +151,17 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
       <label>שעת התחלה
-        <input 
-          ref={startTimeRef}
-          type="time" 
-          value={startTime} 
-          onChange={e => setStartTime(e.target.value)} 
-          step="60" 
-          required 
-          className="admin-time-input"
-          data-format="24"
+        <CustomTimeInput
+          value={startTime}
+          onChange={e => setStartTime(e.target.value)}
+          required
         />
       </label>
       <label>שעת סיום
-        <input 
-          ref={endTimeRef}
-          type="time" 
-          value={endTime} 
-          onChange={e => setEndTime(e.target.value)} 
-          step="60" 
-          required 
-          className="admin-time-input"
-          data-format="24"
+        <CustomTimeInput
+          value={endTime}
+          onChange={e => setEndTime(e.target.value)}
+          required
         />
       </label>
       <label>סוג אימון
