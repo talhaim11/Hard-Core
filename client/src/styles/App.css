@@ -131,3 +131,29 @@
 }
 ==== END MODAL STYLES ====
 */
+
+ /* Global Date and Time Input Picker Styles */
+/* Make date/time picker buttons white on dark backgrounds */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Makes black icons white */
+  cursor: pointer;
+}
+
+/* For Firefox - use dark color scheme */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Force 24-hour format for time inputs */
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+/* Hide AM/PM field to ensure 24-hour format display */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
