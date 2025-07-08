@@ -61,8 +61,6 @@ const SessionTable = ({ token, showNotification }) => {
     { key: 5, label: 'שישי' },
     { key: 6, label: 'שבת' },
   ];
-  // ...existing code...
-
   // Helper: get current week (Sun-Sat) and next week
   function getCurrentAndNextWeek(date) {
     // Find the Sunday of the current week
@@ -134,7 +132,20 @@ const SessionTable = ({ token, showNotification }) => {
     saturday: sessionsByDay[6]?.length || 0,
   });
   
-  // ...existing code...
+  // Additional debug logging for sessions filtering
+  console.log('🔍 DEBUG: Filtering sessions for selected week:', {
+    sessionDate: session.date,
+    parsedDate: d,
+    weekStart,
+    weekEnd,
+    isInWeek: d >= weekStart && d <= weekEnd,
+  });
+
+  // Additional debug logging for sessionsByDay initialization
+  console.log('🔍 DEBUG: Initializing sessionsByDay:', {
+    daysOfWeek,
+    sessionsByDay,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
