@@ -1,5 +1,7 @@
 from flask_cors import CORS
 
+import os
+import sys
 import psycopg2
 import bcrypt
 import jwt
@@ -8,7 +10,6 @@ from dotenv import load_dotenv
 load_dotenv()
 from functools import wraps
 from flask import Flask, request, jsonify
-import jwt
 
 
 # --- CONFIGURATION ---
