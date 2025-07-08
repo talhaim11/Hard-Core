@@ -36,25 +36,74 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
         input.setAttribute('step', '60');
         input.setAttribute('data-format', '24');
         
-        // Try to force locale that uses 24-hour format
-        try {
-          if (input.showPicker) {
-            input.addEventListener('focus', () => {
-              // Force 24-hour format by setting locale
-              document.documentElement.setAttribute('lang', 'en-GB');
-            });
+        // Force the browser to use 24-hour format
+        const observer = new MutationObserver(() => {
+          const ampmField = input.shadowRoot?.querySelector('[part="ampm-field"]') || 
+                          document.querySelector('input[type="time"]::-webkit-datetime-edit-ampm-field');
+          if (ampmField) {
+            ampmField.style.display = 'none';
+            ampmField.style.width = '0';
+            ampmField.style.visibility = 'hidden';
           }
-        } catch (e) {
-          console.log('Browser does not support showPicker');
-        }
+        });
         
-        // Hide AM/PM with more aggressive CSS
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // Override the value setter to ensure 24-hour format
+        const originalSetValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        const newSetValue = function(val) {
+          if (val && val.includes('M')) {
+            // Convert AM/PM format to 24-hour
+            const time = val.replace(/\s*(AM|PM)/i, '');
+            const [hours, minutes] = time.split(':');
+            let hour24 = parseInt(hours);
+            
+            if (val.toUpperCase().includes('PM') && hour24 !== 12) {
+              hour24 += 12;
+            } else if (val.toUpperCase().includes('AM') && hour24 === 12) {
+              hour24 = 0;
+            }
+            
+            val = `${hour24.toString().padStart(2, '0')}:${minutes}`;
+          }
+          originalSetValue.call(this, val);
+        };
+        
+        Object.defineProperty(input, 'value', {
+          get: Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').get,
+          set: newSetValue
+        });
+        
+        // Add event listeners to force format
+        input.addEventListener('input', (e) => {
+          if (e.target.value && e.target.value.includes('M')) {
+            const time = e.target.value.replace(/\s*(AM|PM)/i, '');
+            const [hours, minutes] = time.split(':');
+            let hour24 = parseInt(hours);
+            
+            if (e.target.value.toUpperCase().includes('PM') && hour24 !== 12) {
+              hour24 += 12;
+            } else if (e.target.value.toUpperCase().includes('AM') && hour24 === 12) {
+              hour24 = 0;
+            }
+            
+            e.target.value = `${hour24.toString().padStart(2, '0')}:${minutes}`;
+          }
+        });
+        
+        // Additional CSS injection
         const style = document.createElement('style');
         style.textContent = `
           input[type="time"]::-webkit-datetime-edit-ampm-field {
             display: none !important;
-            width: 0 !important;
+            width: 0px !important;
+            height: 0px !important;
             visibility: hidden !important;
+            position: absolute !important;
+            left: -9999px !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
           }
         `;
         if (!document.head.querySelector('style[data-time-24h]')) {

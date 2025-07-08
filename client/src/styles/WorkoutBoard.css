@@ -77,39 +77,51 @@
 /* Quick-add form time picker styles for SessionTable */
 .quick-add-time-input {
   background: #fff !important;
-  color: #333 !important;
+  color: #000000 !important;
   color-scheme: light !important;
-  -webkit-text-fill-color: #333 !important;
+  -webkit-text-fill-color: #000000 !important;
 }
 
 .quick-add-time-input::-webkit-calendar-picker-indicator {
   filter: none !important;
   cursor: pointer;
-  color: #333 !important;
+  color: #000000 !important;
 }
 
 .quick-add-time-input::-webkit-datetime-edit-ampm-field {
   display: none !important;
-  width: 0 !important;
+  width: 0px !important;
+  height: 0px !important;
   visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 /* General time input styles for admin section */
 input[type="time"].admin-time-input {
   color-scheme: light !important;
   background: #fff !important;
-  color: #333 !important;
-  -webkit-text-fill-color: #333 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
 }
 
 input[type="time"].admin-time-input::-webkit-calendar-picker-indicator {
   filter: none !important;
   cursor: pointer;
-  color: #333 !important;
+  color: #000000 !important;
 }
 
 input[type="time"].admin-time-input::-webkit-datetime-edit-ampm-field {
   display: none !important;
-  width: 0 !important;
+  width: 0px !important;
+  height: 0px !important;
   visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }

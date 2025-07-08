@@ -66,10 +66,11 @@
   padding: 0.5rem;
   border-radius: 5px;
   border: 1px solid #444;
-  background: #fff !important;
-  color: #333 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
   /* Force light theme for better visibility */
   color-scheme: light !important;
+  -webkit-text-fill-color: #000000 !important;
 }
 
 /* Make calendar/time picker icons dark for light background */
@@ -78,35 +79,43 @@
   filter: none !important;
   cursor: pointer;
   background: transparent;
-  color: #333 !important;
+  color: #000000 !important;
 }
 
-/* Force 24-hour format - multiple approaches */
+/* Aggressive 24-hour format enforcement */
 .session-form input[type="time"]::-webkit-datetime-edit-ampm-field {
   display: none !important;
-  width: 0 !important;
+  width: 0px !important;
+  height: 0px !important;
   visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
-/* Style the time picker dropdown */
+/* Style the time picker dropdown text */
 .session-form input[type="time"]::-webkit-datetime-edit {
-  color: #333 !important;
+  color: #000000 !important;
   background: transparent;
 }
 
 .session-form input[type="time"]::-webkit-datetime-edit-hour-field,
 .session-form input[type="time"]::-webkit-datetime-edit-minute-field {
-  color: #333 !important;
+  color: #000000 !important;
   background: transparent;
 }
 
 /* Additional approach to hide AM/PM */
 .session-form input[type="time"]::-webkit-datetime-edit-text {
-  color: #333 !important;
+  color: #000000 !important;
 }
 
-/* Make sure the input text is visible */
-.session-form input[type="time"],
-.session-form input[type="date"] {
-  -webkit-text-fill-color: #333 !important;
+/* Force focus styles */
+.session-form input[type="time"]:focus,
+.session-form input[type="date"]:focus {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  outline: 2px solid #007bff;
 }
