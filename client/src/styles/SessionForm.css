@@ -59,4 +59,54 @@
   color: #fff;
 }
 
+/* Specific styles for date/time inputs in session forms */
+.session-form input[type="date"],
+.session-form input[type="time"] {
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  border-radius: 5px;
+  border: 1px solid #444;
+  background: #fff !important;
+  color: #333 !important;
+  /* Force light theme for better visibility */
+  color-scheme: light !important;
+}
 
+/* Make calendar/time picker icons dark for light background */
+.session-form input[type="date"]::-webkit-calendar-picker-indicator,
+.session-form input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  cursor: pointer;
+  background: transparent;
+  color: #333 !important;
+}
+
+/* Force 24-hour format - multiple approaches */
+.session-form input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none !important;
+  width: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Style the time picker dropdown */
+.session-form input[type="time"]::-webkit-datetime-edit {
+  color: #333 !important;
+  background: transparent;
+}
+
+.session-form input[type="time"]::-webkit-datetime-edit-hour-field,
+.session-form input[type="time"]::-webkit-datetime-edit-minute-field {
+  color: #333 !important;
+  background: transparent;
+}
+
+/* Additional approach to hide AM/PM */
+.session-form input[type="time"]::-webkit-datetime-edit-text {
+  color: #333 !important;
+}
+
+/* Make sure the input text is visible */
+.session-form input[type="time"],
+.session-form input[type="date"] {
+  -webkit-text-fill-color: #333 !important;
+}

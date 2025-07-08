@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const MAX_MONTHS_AHEAD = 3;
 const frequencies = [
@@ -23,6 +23,50 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
   const [frequency, setFrequency] = useState('once');
   const [endDate, setEndDate] = useState('');
   const [sessionType, setSessionType] = useState(initial?.session_type || 'regular');
+  
+  // Refs for time inputs to force 24-hour format
+  const startTimeRef = useRef(null);
+  const endTimeRef = useRef(null);
+
+  // Force 24-hour format on time inputs
+  useEffect(() => {
+    const force24Hour = (input) => {
+      if (input) {
+        // Set attributes to force 24-hour format
+        input.setAttribute('step', '60');
+        input.setAttribute('data-format', '24');
+        
+        // Try to force locale that uses 24-hour format
+        try {
+          if (input.showPicker) {
+            input.addEventListener('focus', () => {
+              // Force 24-hour format by setting locale
+              document.documentElement.setAttribute('lang', 'en-GB');
+            });
+          }
+        } catch (e) {
+          console.log('Browser does not support showPicker');
+        }
+        
+        // Hide AM/PM with more aggressive CSS
+        const style = document.createElement('style');
+        style.textContent = `
+          input[type="time"]::-webkit-datetime-edit-ampm-field {
+            display: none !important;
+            width: 0 !important;
+            visibility: hidden !important;
+          }
+        `;
+        if (!document.head.querySelector('style[data-time-24h]')) {
+          style.setAttribute('data-time-24h', 'true');
+          document.head.appendChild(style);
+        }
+      }
+    };
+
+    force24Hour(startTimeRef.current);
+    force24Hour(endTimeRef.current);
+  }, []);
 
   // Calculate max end date (3 months from selected start date)
   const maxEndDate = date ? new Date(new Date(date).setMonth(new Date(date).getMonth() + MAX_MONTHS_AHEAD)).toISOString().slice(0, 10) : '';
@@ -57,10 +101,28 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
       <label>שעת התחלה
-        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} step="60" required />
+        <input 
+          ref={startTimeRef}
+          type="time" 
+          value={startTime} 
+          onChange={e => setStartTime(e.target.value)} 
+          step="60" 
+          required 
+          className="admin-time-input"
+          data-format="24"
+        />
       </label>
       <label>שעת סיום
-        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} step="60" required />
+        <input 
+          ref={endTimeRef}
+          type="time" 
+          value={endTime} 
+          onChange={e => setEndTime(e.target.value)} 
+          step="60" 
+          required 
+          className="admin-time-input"
+          data-format="24"
+        />
       </label>
       <label>סוג אימון
         <select value={sessionType} onChange={e => setSessionType(e.target.value)}>

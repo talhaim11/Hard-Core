@@ -364,8 +364,26 @@ const SessionTable = ({ token, showNotification }) => {
               <form style={{background:'#fff',border:'1px solid #eee',borderRadius:8,padding:8,marginTop:4,boxShadow:'0 2px 8px #0001',zIndex:10,minWidth:180}} onSubmit={e=>{e.preventDefault();handleQuickAdd(day.key);}}>
                 <div style={{display:'flex',flexDirection:'column',gap:4}}>
                   <input placeholder="שם אימון" value={quickAddTitle} onChange={e=>setQuickAddTitle(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
-                  <input type="time" value={quickAddStart} onChange={e=>setQuickAddStart(e.target.value)} step="60" required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
-                  <input type="time" value={quickAddEnd} onChange={e=>setQuickAddEnd(e.target.value)} step="60" required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
+                  <input 
+                    type="time" 
+                    value={quickAddStart} 
+                    onChange={e=>setQuickAddStart(e.target.value)} 
+                    step="60" 
+                    required 
+                    className="quick-add-time-input admin-time-input"
+                    data-format="24" 
+                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} 
+                  />
+                  <input 
+                    type="time" 
+                    value={quickAddEnd} 
+                    onChange={e=>setQuickAddEnd(e.target.value)} 
+                    step="60" 
+                    required 
+                    className="quick-add-time-input admin-time-input"
+                    data-format="24" 
+                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} 
+                  />
                   <select value={quickAddType} onChange={e=>setQuickAddType(e.target.value)} style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}>
                     <option value="regular">אימון רגיל</option>
                     <option value="blocked">זמן חסום</option>
