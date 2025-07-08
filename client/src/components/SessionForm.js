@@ -57,10 +57,10 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
         <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
       </label>
       <label>שעת התחלה
-        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} step="60" required />
       </label>
       <label>שעת סיום
-        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} step="60" required />
       </label>
       <label>סוג אימון
         <select value={sessionType} onChange={e => setSessionType(e.target.value)}>

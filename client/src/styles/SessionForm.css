@@ -58,3 +58,28 @@
   background: #dc3545;
   color: #fff;
 }
+
+/* Date and Time Input Picker Buttons */
+.session-form input[type="date"]::-webkit-calendar-picker-indicator,
+.session-form input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Makes black icons white */
+  cursor: pointer;
+}
+
+/* For Firefox */
+.session-form input[type="date"],
+.session-form input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Force 24-hour format for time inputs */
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+/* Ensure 24-hour format display */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
