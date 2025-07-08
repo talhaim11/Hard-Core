@@ -100,9 +100,33 @@ const SessionTable = ({ token, showNotification }) => {
     if (session.date) {
       const d = new Date(session.date);
       const dayIdx = d.getDay();
+      
+      // Debug logging for Sunday sessions
+      if (dayIdx === 0) {
+        console.log('🔍 DEBUG: Found Sunday session:', {
+          session: session,
+          date: session.date,
+          parsedDate: d,
+          dayIdx: dayIdx,
+          sessionsByDayHasSunday: !!sessionsByDay[dayIdx]
+        });
+      }
+      
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
+  
+  // Debug logging after grouping
+  console.log('🔍 DEBUG: sessionsByDay after grouping:', {
+    sunday: sessionsByDay[0]?.length || 0,
+    monday: sessionsByDay[1]?.length || 0,
+    tuesday: sessionsByDay[2]?.length || 0,
+    wednesday: sessionsByDay[3]?.length || 0,
+    thursday: sessionsByDay[4]?.length || 0,
+    friday: sessionsByDay[5]?.length || 0,
+    saturday: sessionsByDay[6]?.length || 0,
+  });
+  
   // ...existing code...
 
   const [loading, setLoading] = useState(true);
