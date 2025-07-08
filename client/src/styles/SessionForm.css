@@ -73,13 +73,14 @@
   -webkit-text-fill-color: #000000 !important;
 }
 
-/* Make calendar/time picker icons dark for light background */
+/* Add custom emoji for date/time picker */
 .session-form input[type="date"]::-webkit-calendar-picker-indicator,
 .session-form input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: none !important;
-  cursor: pointer;
-  background: transparent;
+  content: '📅'; /* Example emoji */
+  font-size: 1.2rem;
   color: #000000 !important;
+  background: transparent;
+  cursor: pointer;
 }
 
 /* Aggressive 24-hour format enforcement */
