@@ -26,6 +26,29 @@ function App() {
     if (token && storedRole) {
       setRole(storedRole);
     }
+    
+    // Force 24-hour format globally
+    document.documentElement.setAttribute('lang', 'en-GB');
+    
+    // Add global style to hide AM/PM
+    const globalStyle = document.createElement('style');
+    globalStyle.textContent = `
+      input[type="time"]::-webkit-datetime-edit-ampm-field {
+        display: none !important;
+        width: 0px !important;
+        height: 0px !important;
+        visibility: hidden !important;
+        position: absolute !important;
+        left: -9999px !important;
+        opacity: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+      }
+    `;
+    if (!document.head.querySelector('style[data-global-24h]')) {
+      globalStyle.setAttribute('data-global-24h', 'true');
+      document.head.appendChild(globalStyle);
+    }
   }, []);
 
    return ( 

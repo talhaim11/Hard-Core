@@ -227,6 +227,7 @@
   line-height: 1.6;
   white-space: pre-wrap;
   border: 1px solid #e9ecef;
+  color: #333; /* Black text color */
 }
 
 .message-meta {

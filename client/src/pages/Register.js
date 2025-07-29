@@ -7,9 +7,13 @@ function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async () => {
+    if (isLoading) return; // Prevent multiple submissions
+    
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE}/register`, {
         method: "POST",
@@ -27,6 +31,8 @@ function Register() {
     } catch (error) {
       console.error("Registration error:", error);
       alert("Registration failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,7 +67,16 @@ function Register() {
             onChange={e => setToken(e.target.value)}
           />
         </label>
-        <button onClick={handleRegister}>Register</button>
+        <button onClick={handleRegister} disabled={isLoading} className={isLoading ? 'loading' : ''}>
+          {isLoading ? (
+            <>
+              <span className="spinner"></span>
+              Registering...
+            </>
+          ) : (
+            'Register'
+          )}
+        </button>
         <div style={{textAlign: 'center', marginTop: '1rem'}}>
           <span>Already have an account? </span>
           <a href="/">Login here</a>

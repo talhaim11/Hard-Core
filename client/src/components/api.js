@@ -227,6 +227,43 @@ export const deleteUser = async (userId) => {
   }
 };
 
+// Session blocking permission management
+export const updateUserSessionBlockingPermission = async (userId, canBlockSessions) => {
+  try {
+    const response = await api.put(`/users/${userId}/session-blocking-permission`, { 
+      can_block_sessions: canBlockSessions 
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating session blocking permission:', error);
+    throw error;
+  }
+};
+
+// Block/unblock sessions (for authorized users)
+export const blockSession = async (sessionId, reason) => {
+  try {
+    const response = await api.post(`/sessions/${sessionId}/block`, { reason });
+    return response.data;
+  } catch (error) {
+    console.error('Error blocking session:', error);
+    throw error;
+  }
+};
+
+export const unblockSession = async (sessionId) => {
+  try {
+    const response = await api.delete(`/sessions/${sessionId}/block`);
+    return response.data;
+  } catch (error) {
+    console.error('Error unblocking session:', error);
+    throw error;
+  }
+};
+
+// Get blocked sessions
+export const getBlockedSessions = () => apiGet('/sessions/blocked');
+
 // Subscription-related API exports
 export const fetchUserSubscription = () => apiGet('/user/subscription-status');
 export const createSubscription = (subscriptionData) => apiPost('/subscriptions', subscriptionData);
@@ -240,6 +277,8 @@ export const fetchAdminMessages = () => apiGet('/admin/messages');
 export const createAdminMessage = (messageData) => apiPost('/admin/messages', messageData);
 export const deleteAdminMessage = (messageId) => apiDelete(`/admin/messages/${messageId}`);
 export const fetchUserMessages = () => apiGet('/user/messages');
+// Fetch users for a specific session (for user dashboard)
+export const fetchSessionUsers = (sessionId) => apiGet(`/sessions/${sessionId}/users`);
 
 api.interceptors.response.use(
   res => res,

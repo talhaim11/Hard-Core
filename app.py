@@ -1607,6 +1607,15 @@ def get_user_id_from_request():
         pass
     return None
 
+# Test route for debugging
+@app.route('/')
+def test_root():
+    return jsonify({'message': 'Flask server is running!', 'status': 'OK'})
+
+@app.route('/status')
+def status():
+    return jsonify({'status': 'running', 'database': 'connected'})
+
 if __name__ == "__main__":
     from os import environ
     print(f"[STARTUP] POSTGRES_URL: {POSTGRES_URL}")

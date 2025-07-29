@@ -131,3 +131,84 @@
 }
 ==== END MODAL STYLES ====
 */
+
+ /* Global Date and Time Input Picker Styles */
+/* Make date/time picker buttons white on dark backgrounds */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) !important; /* Makes black icons white */
+  cursor: pointer !important;
+  background: transparent !important;
+}
+
+/* For Firefox - use dark color scheme */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark !important;
+}
+
+/* Force 24-hour format for time inputs */
+input[type="time"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+}
+
+/* AGGRESSIVE 24-hour format enforcement */
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+}
+
+/* Admin time inputs - lighter theme with better visibility */
+input[type="time"].admin-time-input,
+.quick-add-time-input {
+  color-scheme: light !important;
+  background: #972a85 !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #34b434 !important;
+  border: 1px solid #ccc !important;
+}
+
+input[type="time"].admin-time-input::-webkit-calendar-picker-indicator,
+.quick-add-time-input::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  color: #000000 !important;
+}
+
+/* Multiple approaches to hide AM/PM */
+input[type="time"].admin-time-input::-webkit-datetime-edit-ampm-field,
+.quick-add-time-input::-webkit-datetime-edit-ampm-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Ensure time text is always visible */
+input[type="time"].admin-time-input::-webkit-datetime-edit,
+.quick-add-time-input::-webkit-datetime-edit {
+  color: #000000 !important;
+  background: transparent !important;
+}
+
+input[type="time"].admin-time-input::-webkit-datetime-edit-hour-field,
+input[type="time"].admin-time-input::-webkit-datetime-edit-minute-field,
+.quick-add-time-input::-webkit-datetime-edit-hour-field,
+.quick-add-time-input::-webkit-datetime-edit-minute-field {
+  color: #000000 !important;
+  background: transparent !important;
+}

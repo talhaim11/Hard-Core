@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages } from './api';
+import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages, fetchSessionUsers } from './api';
 import { API_BASE } from '../config';
 import axios from 'axios';
+import SessionBlockingManager from './SessionBlockingManager';
 import '../styles/UserDashboard.css';
 
 // Hebrew days of week, starting from Sunday
@@ -30,6 +31,11 @@ const UserDashboard = () => {
   const [activeDay, setActiveDay] = useState(new Date().getDay());
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUsersPopup, setShowUsersPopup] = useState(false);
+  const [popupUsers, setPopupUsers] = useState([]);
+  const [popupLoading, setPopupLoading] = useState(false);
+  const [popupError, setPopupError] = useState("");
+  const [popupSessionTitle, setPopupSessionTitle] = useState("");
   const settingsRef = useRef(null);
 
   // Close settings dropdown when clicking outside
@@ -233,6 +239,29 @@ const UserDashboard = () => {
     }
   };
 
+  const handleShowUsers = async (session) => {
+    setShowUsersPopup(true);
+    setPopupUsers([]);
+    setPopupLoading(true);
+    setPopupError("");
+    setPopupSessionTitle(session.title || "");
+    try {
+      const res = await fetchSessionUsers(session.id);
+      setPopupUsers(res.users || []);
+    } catch (err) {
+      setPopupError("שגיאה בטעינת רשימת הנרשמים");
+    } finally {
+      setPopupLoading(false);
+    }
+  };
+
+  const handleClosePopup = () => {
+    setShowUsersPopup(false);
+    setPopupUsers([]);
+    setPopupError("");
+    setPopupSessionTitle("");
+  };
+
   if (loading) return <div>טוען נתונים...</div>;
 
   const handleLogout = () => {
@@ -368,6 +397,13 @@ const UserDashboard = () => {
         </div>
       </div>
       
+      {/* Session Blocking Manager - Only for authorized users */}
+      {profile && profile.can_block_sessions && (
+        <div className="session-blocking-section">
+          <SessionBlockingManager />
+        </div>
+      )}
+      
       <div className="sessions-section">
         <h3>המפגשים שלי</h3>
         {sessions.length === 0 ? (
@@ -452,6 +488,9 @@ const UserDashboard = () => {
                   {s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}
                   {s.session_type === 'blocked' ? ' - זמן חסום' : ` | משתתפים: ${s.participants}`}
                 </span>
+                {s.session_type !== 'blocked' && s.participants > 0 && (
+                  <button onClick={() => handleShowUsers(s)}>צפה בנרשמים</button>
+                )}
                 {s.session_type === 'blocked' ? (
                   <span style={{color:'#666',marginRight:8,fontStyle:'italic'}}>לא ניתן להירשם</span>
                 ) : sessions.some(us => us.id === s.id) ? (
@@ -467,6 +506,49 @@ const UserDashboard = () => {
         </ul>
         {message && <div style={{color:'blue',marginTop:8}}>{message}</div>}
       </div>
+
+      {/* Participants Popup */}
+      {showUsersPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 12,
+            padding: 32,
+            minWidth: 320,
+            maxWidth: 400,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+            textAlign: 'center',
+            fontFamily: 'inherit',
+            position: 'relative'
+          }}>
+            <button onClick={handleClosePopup} style={{position:'absolute',top:12,right:16,fontSize:20,background:'none',border:'none',cursor:'pointer',color:'#1e90ff'}}>×</button>
+            <h2 style={{marginBottom:16}}>נרשמים לאימון</h2>
+            <div style={{fontWeight:600,marginBottom:8}}>{popupSessionTitle}</div>
+            {popupLoading ? (
+              <div>טוען...</div>
+            ) : popupError ? (
+              <div style={{color:'red'}}>{popupError}</div>
+            ) : popupUsers.length === 0 ? (
+              <div>אין נרשמים</div>
+            ) : (
+              <ul style={{listStyle:'none',padding:0,margin:0}}>
+                {popupUsers.map(u => (
+                  <li key={u.id} style={{padding:'8px 0',borderBottom:'1px solid #eee',fontSize:17}}>
+                    <span style={{color:'#222',fontWeight:500}}>{u.email || u.name || '---'}</span>
+                    {u.role === 'admin' && <span style={{color:'#888',fontSize:13,marginRight:8}}>(מנהל)</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

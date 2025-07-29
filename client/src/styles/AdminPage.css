@@ -269,8 +269,8 @@ button {
 }
 
 .scrollable-user-list {
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: none !important;
+  overflow-y: visible !important;
   padding-right: 4px;
 }
 .user-search {

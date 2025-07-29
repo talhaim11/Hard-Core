@@ -7,6 +7,7 @@ import {
   deleteSession
 } from './api';
 import SessionForm from './SessionForm';
+import CustomTimeInput from './CustomTimeInput';
 import '../styles/AdminPage.css';
 import '../styles/SessionForm.css';
 
@@ -60,8 +61,6 @@ const SessionTable = ({ token, showNotification }) => {
     { key: 5, label: 'שישי' },
     { key: 6, label: 'שבת' },
   ];
-  // ...existing code...
-
   // Helper: get current week (Sun-Sat) and next week
   function getCurrentAndNextWeek(date) {
     // Find the Sunday of the current week
@@ -69,13 +68,19 @@ const SessionTable = ({ token, showNotification }) => {
     const day = curr.getDay();
     const sunday = new Date(curr);
     sunday.setDate(curr.getDate() - day);
+    sunday.setHours(0, 0, 0, 0); // Ensure midnight for Sunday
     const saturday = new Date(sunday);
     saturday.setDate(sunday.getDate() + 6);
+    saturday.setHours(23, 59, 59, 999); // Ensure end of day for Saturday
+
     // Next week
     const nextSunday = new Date(sunday);
     nextSunday.setDate(sunday.getDate() + 7);
+    nextSunday.setHours(0, 0, 0, 0);
     const nextSaturday = new Date(nextSunday);
     nextSaturday.setDate(nextSunday.getDate() + 6);
+    nextSaturday.setHours(23, 59, 59, 999);
+
     return [ [sunday, saturday], [nextSunday, nextSaturday] ];
   }
 
@@ -99,10 +104,45 @@ const SessionTable = ({ token, showNotification }) => {
     if (session.date) {
       const d = new Date(session.date);
       const dayIdx = d.getDay();
+      
+      // Debug logging for Sunday sessions
+      if (dayIdx === 0) {
+        console.log('🔍 DEBUG: Found Sunday session:', {
+          session: session,
+          date: session.date,
+          parsedDate: d,
+          dayIdx: dayIdx,
+          sessionsByDayHasSunday: !!sessionsByDay[dayIdx]
+        });
+      }
+      
+      // Additional debug logging for Sunday sessions
+      console.log('🔍 DEBUG: Checking session.date format:', {
+        sessionDate: session.date,
+        parsedDate: d,
+        isValidDate: !isNaN(d.getTime()),
+      });
+      
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
-  // ...existing code...
+  
+  // Debug logging after grouping
+  console.log('🔍 DEBUG: sessionsByDay after grouping:', {
+    sunday: sessionsByDay[0]?.length || 0,
+    monday: sessionsByDay[1]?.length || 0,
+    tuesday: sessionsByDay[2]?.length || 0,
+    wednesday: sessionsByDay[3]?.length || 0,
+    thursday: sessionsByDay[4]?.length || 0,
+    friday: sessionsByDay[5]?.length || 0,
+    saturday: sessionsByDay[6]?.length || 0,
+  });
+
+  // Additional debug logging for sessionsByDay initialization
+  console.log('🔍 DEBUG: Initializing sessionsByDay:', {
+    daysOfWeek,
+    sessionsByDay,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -364,8 +404,18 @@ const SessionTable = ({ token, showNotification }) => {
               <form style={{background:'#fff',border:'1px solid #eee',borderRadius:8,padding:8,marginTop:4,boxShadow:'0 2px 8px #0001',zIndex:10,minWidth:180}} onSubmit={e=>{e.preventDefault();handleQuickAdd(day.key);}}>
                 <div style={{display:'flex',flexDirection:'column',gap:4}}>
                   <input placeholder="שם אימון" value={quickAddTitle} onChange={e=>setQuickAddTitle(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
-                  <input type="time" value={quickAddStart} onChange={e=>setQuickAddStart(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
-                  <input type="time" value={quickAddEnd} onChange={e=>setQuickAddEnd(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
+                  <CustomTimeInput
+                    value={quickAddStart}
+                    onChange={e=>setQuickAddStart(e.target.value)}
+                    required
+                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}
+                  />
+                  <CustomTimeInput
+                    value={quickAddEnd}
+                    onChange={e=>setQuickAddEnd(e.target.value)}
+                    required
+                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}
+                  />
                   <select value={quickAddType} onChange={e=>setQuickAddType(e.target.value)} style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}>
                     <option value="regular">אימון רגיל</option>
                     <option value="blocked">זמן חסום</option>
