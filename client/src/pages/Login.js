@@ -5,6 +5,7 @@ import { API_BASE } from "../config";
 function Login({ setRole }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,6 +17,9 @@ function Login({ setRole }) {
   }, [navigate]);
 
   const handleLogin = async () => {
+    if (isLoading) return; // Prevent multiple submissions
+    
+    setIsLoading(true);
     try {
         console.log('🔧 LOGIN: Attempting to connect to:', `${API_BASE}/login`);
         const response = await fetch(`${API_BASE}/login`, {
@@ -40,6 +44,8 @@ function Login({ setRole }) {
     } catch (error) {
       console.error("Login error:", error);
       alert("Login failed");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -65,7 +71,16 @@ function Login({ setRole }) {
             onChange={e => setPassword(e.target.value)}
           />
         </label>
-        <button onClick={handleLogin}>Login</button>
+        <button onClick={handleLogin} disabled={isLoading} className={isLoading ? 'loading' : ''}>
+          {isLoading ? (
+            <>
+              <span className="spinner"></span>
+              Logging in...
+            </>
+          ) : (
+            'Login'
+          )}
+        </button>
         <div style={{textAlign: 'center', marginTop: '1rem'}}>
           <span>New user? </span>
           <a href="/register">Register here</a>

@@ -57,6 +57,37 @@
   background: #1275d2;
 }
 
+.login-card button:disabled {
+  background: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.login-card button:disabled:hover {
+  background: #a0a0a0;
+}
+
+.login-card button.loading {
+  position: relative;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s ease-in-out infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .error-msg {
   color: #dc3545;
   font-size: 0.85rem;

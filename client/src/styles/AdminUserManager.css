@@ -13,28 +13,86 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .user-item {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
   gap: 0.5rem;
-  padding: 1rem;
-  background-color: #fff;
+  padding: 0;
+  background-color: #fff !important;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: visible !important;
+  margin-bottom: 8px;
+  min-height: 60px;
+}
+
+.user-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 1rem !important;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-height: 60px !important;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #ffffff !important;
+}
+
+.user-header:hover {
+  background-color: #f8f9fa !important;
 }
 
 .user-info {
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 0.5rem;
+  font-weight: bold !important;
+  color: #333 !important;
+  margin-bottom: 0;
+  font-size: 1rem !important;
+  flex: 1;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.arrow {
+  font-size: 1rem !important;
+  color: #666 !important;
+  transition: transform 0.2s ease;
+  user-select: none;
+  min-width: 20px;
+  text-align: center;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.arrow.expanded {
+  transform: rotate(180deg) !important;
 }
 
 .user-actions {
-  display: flex;
+  display: flex !important;
   gap: 0.5rem;
   flex-wrap: wrap;
+  padding: 0 1rem 1rem 1rem !important;
+  border-top: 1px solid #e9ecef;
+  padding-top: 1rem !important;
+  background-color: #f8f9fa !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.no-users {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
 .user-item button {
@@ -203,11 +261,12 @@
 
 /* Subscription details styling */
 .subscription-details {
-  margin-top: 1rem;
+  margin: 0 1rem 1rem 1rem;
   padding: 1rem;
   background-color: #f8f9fa;
   border-radius: 6px;
   border: 1px solid #dee2e6;
+  border-top: none;
 }
 
 .subscription-details h4 {
@@ -255,4 +314,54 @@ button:disabled {
     width: 100%;
     text-align: center;
   }
+}
+
+/* Force visibility for admin management buttons */
+.user-item .admin-management-button {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-color: #007bff !important;
+  color: white !important;
+  padding: 12px 16px !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  min-height: 44px !important;
+  margin: 5px !important;
+  width: auto !important;
+  height: auto !important;
+  position: static !important;
+  overflow: visible !important;
+}
+
+.user-item .admin-management-button.view-details {
+  background-color: #007bff !important;
+}
+
+.user-item .admin-management-button.monthly {
+  background-color: #28a745 !important;
+}
+
+.user-item .admin-management-button.one-time {
+  background-color: #ffc107 !important;
+  color: black !important;
+}
+
+.user-item .admin-management-button.entries-5 {
+  background-color: #17a2b8 !important;
+}
+
+.user-item .admin-management-button.entries-10 {
+  background-color: #6f42c1 !important;
+}
+
+.user-item .admin-management-button.delete-subs {
+  background-color: #fd7e14 !important;
+}
+
+.user-item .admin-management-button.delete-user {
+  background-color: #dc3545 !important;
 }

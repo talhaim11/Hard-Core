@@ -137,15 +137,6 @@ const SessionTable = ({ token, showNotification }) => {
     friday: sessionsByDay[5]?.length || 0,
     saturday: sessionsByDay[6]?.length || 0,
   });
-  
-  // Additional debug logging for sessions filtering
-  console.log('🔍 DEBUG: Filtering sessions for selected week:', {
-    sessionDate: session.date,
-    parsedDate: d,
-    weekStart,
-    weekEnd,
-    isInWeek: d >= weekStart && d <= weekEnd,
-  });
 
   // Additional debug logging for sessionsByDay initialization
   console.log('🔍 DEBUG: Initializing sessionsByDay:', {
