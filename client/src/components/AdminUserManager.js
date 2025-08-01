@@ -101,20 +101,42 @@ export default function AdminPanel() {
     
     if (!window.confirm(confirmMessage)) return;
     
+    console.log('🚀 Starting session blocking permission update...');
+    console.log('📊 User ID:', userId, 'Type:', typeof userId);
+    console.log('👤 User object:', user);
+    console.log('🔄 New permission:', newPermission);
+    console.log('🌐 API_BASE:', API_BASE);
+    console.log('🔗 Full URL:', `${API_BASE}/users/${userId}/session-blocking-permission`);
+    
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`${API_BASE}/users/${userId}/session-blocking-permission`, 
-        { can_block_sessions: newPermission }, 
+      console.log('🔑 Token exists:', !!token);
+      console.log('🔑 Token preview:', token ? token.substring(0, 20) + '...' : 'No token');
+      
+      const requestData = { can_block_sessions: newPermission };
+      console.log('📤 Request data:', requestData);
+      
+      const response = await axios.put(`${API_BASE}/users/${userId}/session-blocking-permission`, 
+        requestData, 
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response data:', response.data);
       
       const actionText = newPermission ? 'granted' : 'removed';
       setMessage(`Session blocking permission ${actionText} successfully!`);
       fetchUsers(); // Refresh the user list
     } catch (err) {
-      console.error("Error updating session blocking permission:", err);
+      console.error('❌ Full error object:', err);
+      console.error('❌ Error response:', err.response);
+      console.error('❌ Error response status:', err.response?.status);
+      console.error('❌ Error response data:', err.response?.data);
+      console.error('❌ Error config:', err.config);
+      
       const errorMsg = err.response?.data?.error || 'Failed to update permission';
+      console.error('❌ Final error message:', errorMsg);
       setMessage(`Failed to update permission: ${errorMsg}`);
     } finally {
       setLoading(false);
@@ -178,10 +200,6 @@ export default function AdminPanel() {
         ) : (
           filteredUsers.map((u, i) => {
             const userId = u.id; // Use the actual user ID from the object
-            console.log('🔍 User object:', u);
-            console.log('🔍 User ID:', userId);
-            console.log('🔍 Expanded users state:', expandedUsers);
-            console.log('🔍 Is this user expanded?', expandedUsers[userId]);
             return (
               <li key={i} className="user-item">
                 <div className="user-header" onClick={() => toggleUserExpansion(userId)} style={{backgroundColor: '#f8f9fa', border: '1px solid #ddd'}}>
@@ -191,12 +209,6 @@ export default function AdminPanel() {
                   <div className={`arrow ${expandedUsers[userId] ? 'expanded' : ''}`} style={{color: '#000', fontSize: '18px'}}>
                     ▼
                   </div>
-                </div>
-                
-                {/* DEBUG: Always show this for testing */}
-                <div style={{backgroundColor: 'yellow', padding: '10px', margin: '5px'}}>
-                  <p>DEBUG: This should always be visible for user {userId}</p>
-                  <p>expandedUsers[{userId}] = {String(expandedUsers[userId])}</p>
                 </div>
 
                 {expandedUsers[userId] && (
@@ -212,7 +224,6 @@ export default function AdminPanel() {
                     boxSizing: 'border-box'
                   }}>
                     <h3 style={{margin: '0 0 15px 0', color: '#ffffff', fontSize: '18px'}}>User Management Options:</h3>
-                    <p style={{color: 'white', fontSize: '16px'}}>DEBUG: Expanded section is visible!</p>
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -224,26 +235,19 @@ export default function AdminPanel() {
                         onClick={() => fetchSubscriptions(userId)}
                         disabled={loading}
                         style={{
-                          all: 'unset',
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
                           backgroundColor: '#007bff',
                           color: 'white',
                           padding: '12px 16px',
-                          border: '2px solid white',
+                          border: 'none',
                           borderRadius: '6px',
-                          fontSize: '16px',
+                          fontSize: '14px',
                           cursor: 'pointer',
                           fontWeight: 'bold',
-                          minHeight: '50px',
-                          margin: '5px 0',
-                          textAlign: 'center',
-                          width: '100%',
-                          boxSizing: 'border-box'
+                          minHeight: '44px',
+                          margin: '5px'
                         }}
                       >
-                        🔍 View Details (DEBUG)
+                        🔍 View Details
                       </button>
                       <button 
                         onClick={() => createSubscriptionHandler(userId, 'monthly')}

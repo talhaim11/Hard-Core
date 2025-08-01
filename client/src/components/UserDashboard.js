@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages, fetchSessionUsers } from './api';
+import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages, fetchSessionUsers, blockSession, unblockSession } from './api';
 import { API_BASE } from '../config';
 import axios from 'axios';
-import SessionBlockingManager from './SessionBlockingManager';
 import '../styles/UserDashboard.css';
 
 // Hebrew days of week, starting from Sunday
@@ -33,9 +32,12 @@ const UserDashboard = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showUsersPopup, setShowUsersPopup] = useState(false);
   const [popupUsers, setPopupUsers] = useState([]);
+  const [showPastSessions, setShowPastSessions] = useState(false);
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupError, setPopupError] = useState("");
   const [popupSessionTitle, setPopupSessionTitle] = useState("");
+  const [blockReason, setBlockReason] = useState('');
+  const [blockingLoading, setBlockingLoading] = useState(false);
   const settingsRef = useRef(null);
 
   // Close settings dropdown when clicking outside
@@ -66,8 +68,49 @@ const UserDashboard = () => {
 
   const today = new Date();
   const weeksToShow = getCurrentAndNextWeek(today);
-  // Filter allSessions by selected week
-  const sessionsInWeek = allSessions.filter(session => {
+  
+  // Separate past and future sessions
+  const separateSessionsByTime = (sessions) => {
+    const now = new Date();
+    const currentDate = now.toDateString();
+    
+    const futureSessions = [];
+    const pastSessions = [];
+    
+    sessions.forEach(session => {
+      if (session.date) {
+        const sessionDate = new Date(session.date);
+        const sessionDateString = sessionDate.toDateString();
+        
+        if (sessionDateString === currentDate) {
+          // Today - check time if available
+          if (session.start_time) {
+            const sessionTime = new Date(`${session.date}T${session.start_time}`);
+            if (sessionTime > now) {
+              futureSessions.push(session);
+            } else {
+              pastSessions.push(session);
+            }
+          } else {
+            futureSessions.push(session); // Default to future if no time
+          }
+        } else if (sessionDate > now) {
+          futureSessions.push(session);
+        } else {
+          pastSessions.push(session);
+        }
+      } else {
+        futureSessions.push(session); // Default to future if no date
+      }
+    });
+    
+    return { futureSessions, pastSessions };
+  };
+  
+  const { futureSessions, pastSessions } = separateSessionsByTime(sessions);
+  
+  // Filter allSessions by selected week - ensure allSessions is an array
+  const sessionsInWeek = (Array.isArray(allSessions) ? allSessions : []).filter(session => {
     if (!session.date) return false;
     const d = new Date(session.date);
     const [weekStart, weekEnd] = weeksToShow[selectedWeek];
@@ -93,6 +136,8 @@ const UserDashboard = () => {
         const sessionData = await fetchUserSessions();
         setSessions(sessionData.sessions || []);
         const profileData = await getUserProfile();
+        console.log('🔍 UserDashboard - Profile data received:', profileData);
+        console.log('🔍 UserDashboard - can_block_sessions:', profileData.can_block_sessions);
         setProfile(profileData);
         setEditProfile({ name: profileData.name || '', email: profileData.email || '', password: '' });
         const all = await fetchSessions();
@@ -262,7 +307,58 @@ const UserDashboard = () => {
     setPopupSessionTitle("");
   };
 
-  if (loading) return <div>טוען נתונים...</div>;
+  // Session blocking functions
+  const handleBlockSession = async (sessionId, sessionInfo) => {
+    const reason = prompt('נא להזין סיבה לחסימת המפגש:');
+    if (!reason || !reason.trim()) {
+      setMessage('נדרשת סיבה לחסימת המפגש');
+      return;
+    }
+
+    setBlockingLoading(true);
+    try {
+      await blockSession(sessionId, reason.trim());
+      setMessage(`מפגש נחסם בהצלחה: ${sessionInfo}`);
+      // Refresh all sessions to show the updated state
+      const sessionData = await fetchSessions();
+      setAllSessions(sessionData.sessions || []);
+      const userSessionData = await fetchUserSessions();
+      setSessions(userSessionData.sessions || []);
+    } catch (err) {
+      console.error('Error blocking session:', err);
+      const errorMsg = err.response?.data?.error || 'שגיאה בחסימת המפגש';
+      setMessage(`שגיאה בחסימת המפגש: ${errorMsg}`);
+    } finally {
+      setBlockingLoading(false);
+    }
+  };
+
+  const handleUnblockSession = async (sessionId, sessionInfo) => {
+    if (!window.confirm('האם אתה בטוח שברצונך לבטל את חסימת המפגש?')) return;
+
+    setBlockingLoading(true);
+    try {
+      await unblockSession(sessionId);
+      setMessage(`חסימת המפגש בוטלה בהצלחה: ${sessionInfo}`);
+      // Refresh all sessions to show the updated state
+      const sessionData = await fetchSessions();
+      setAllSessions(sessionData.sessions || []);
+      const userSessionData = await fetchUserSessions();
+      setSessions(userSessionData.sessions || []);
+    } catch (err) {
+      console.error('Error unblocking session:', err);
+      const errorMsg = err.response?.data?.error || 'שגיאה בביטול חסימת המפגש';
+      setMessage(`שגיאה בביטול חסימת המפגש: ${errorMsg}`);
+    } finally {
+      setBlockingLoading(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="loading-container">
+      <div className="loading-text">טוען נתונים...</div>
+    </div>
+  );
 
   const handleLogout = () => {
     // Remove token/localStorage and redirect to site root
@@ -397,26 +493,63 @@ const UserDashboard = () => {
         </div>
       </div>
       
-      {/* Session Blocking Manager - Only for authorized users */}
-      {profile && profile.can_block_sessions && (
-        <div className="session-blocking-section">
-          <SessionBlockingManager />
-        </div>
-      )}
-      
       <div className="sessions-section">
         <h3>המפגשים שלי</h3>
-        {sessions.length === 0 ? (
+        
+        {/* Future Sessions */}
+        {futureSessions.length === 0 && pastSessions.length === 0 ? (
           <div>אין מפגשים רשומים</div>
         ) : (
-          <ul className="sessions-list">
-            {sessions.map(s => (
-              <li key={s.id}>
-                <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
-                <button onClick={() => handleCancel(s.id)}>בטל הרשמה</button>
-              </li>
-            ))}
-          </ul>
+          <>
+            {futureSessions.length > 0 && (
+              <div className="future-sessions">
+                <h4 style={{color: '#1976d2', marginBottom: '1rem'}}>מפגשים עתידיים</h4>
+                <ul className="sessions-list">
+                  {futureSessions.map(s => (
+                    <li key={s.id} style={{backgroundColor: '#e3f2fd', padding: '10px', margin: '5px 0', borderRadius: '5px'}}>
+                      <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
+                      <button onClick={() => handleCancel(s.id)} style={{marginLeft: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px'}}>בטל הרשמה</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Past Sessions - Expandable */}
+            {pastSessions.length > 0 && (
+              <div className="past-sessions" style={{marginTop: '1.5rem'}}>
+                <div 
+                  onClick={() => setShowPastSessions(!showPastSessions)}
+                  style={{
+                    cursor: 'pointer',
+                    backgroundColor: '#f5f5f5',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    border: '1px solid #ddd',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <h4 style={{margin: 0, color: '#666'}}>מפגשים קודמים ({pastSessions.length})</h4>
+                  <span style={{fontSize: '18px', color: '#666'}}>
+                    {showPastSessions ? '▲' : '▼'}
+                  </span>
+                </div>
+                
+                {showPastSessions && (
+                  <ul className="sessions-list" style={{marginTop: '10px'}}>
+                    {pastSessions.map(s => (
+                      <li key={s.id} style={{backgroundColor: '#f0f0f0', padding: '8px', margin: '3px 0', borderRadius: '3px', opacity: '0.8'}}>
+                        <span style={{color: '#666'}}>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
+                        <span style={{marginLeft: '10px', color: '#999', fontSize: '12px'}}>הושלם</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </>
         )}
         <h3 style={{marginTop:'2rem'}}>הרשמה למפגשים</h3>
         <input
@@ -488,16 +621,108 @@ const UserDashboard = () => {
                   {s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}
                   {s.session_type === 'blocked' ? ' - זמן חסום' : ` | משתתפים: ${s.participants}`}
                 </span>
-                {s.session_type !== 'blocked' && s.participants > 0 && (
-                  <button onClick={() => handleShowUsers(s)}>צפה בנרשמים</button>
-                )}
-                {s.session_type === 'blocked' ? (
-                  <span style={{color:'#666',marginRight:8,fontStyle:'italic'}}>לא ניתן להירשם</span>
-                ) : sessions.some(us => us.id === s.id) ? (
-                  <span style={{color:'green',marginRight:8}}>נרשמת</span>
-                ) : (
-                  <button onClick={() => handleRegister(s.id)}>הירשם</button>
-                )}
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                  {/* Participants button */}
+                  {s.session_type !== 'blocked' && s.participants > 0 && (
+                    <button onClick={() => handleShowUsers(s)} style={{
+                      backgroundColor: '#17a2b8',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}>
+                      צפה בנרשמים
+                    </button>
+                  )}
+                  
+                  {/* Registration/Status */}
+                  {s.session_type === 'blocked' ? (
+                    <>
+                      <span style={{color:'#666',fontStyle:'italic'}}>לא ניתן להירשם</span>
+                      {/* Unblock button for authorized users */}
+                      {profile && profile.can_block_sessions && (
+                        <button 
+                          onClick={() => handleUnblockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          disabled={blockingLoading}
+                          style={{
+                            backgroundColor: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            opacity: blockingLoading ? 0.6 : 1
+                          }}
+                        >
+                          🔓 בטל חסימה
+                        </button>
+                      )}
+                    </>
+                  ) : sessions.some(us => us.id === s.id) ? (
+                    <>
+                      <span style={{color:'green'}}>נרשמת</span>
+                      {/* Block button for authorized users */}
+                      {profile && profile.can_block_sessions && (
+                        <button 
+                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          disabled={blockingLoading}
+                          style={{
+                            backgroundColor: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            opacity: blockingLoading ? 0.6 : 1
+                          }}
+                        >
+                          🚫 חסום מפגש
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => handleRegister(s.id)}
+                        style={{
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '6px 12px',
+                          fontSize: '12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        הירשם
+                      </button>
+                      {/* Block button for authorized users */}
+                      {profile && profile.can_block_sessions && (
+                        <button 
+                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          disabled={blockingLoading}
+                          style={{
+                            backgroundColor: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            opacity: blockingLoading ? 0.6 : 1
+                          }}
+                        >
+                          🚫 חסום מפגש
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </li>
             ))
           ) : (

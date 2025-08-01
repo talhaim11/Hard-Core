@@ -49,10 +49,22 @@ def token_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = {
-              "id": data['sub'],
-              "role": data['role']
-            }
+            
+            # Fetch user details including session blocking permission from database
+            with psycopg2.connect(POSTGRES_URL) as conn:
+                c = conn.cursor()
+                c.execute('SELECT role, can_block_sessions FROM "user" WHERE id = %s', (data['sub'],))
+                user_data = c.fetchone()
+                
+                if not user_data:
+                    return jsonify({'message': 'User not found!'}), 401
+                
+                current_user = {
+                    "id": data['sub'],
+                    "role": user_data[0],
+                    "can_block_sessions": user_data[1] or False
+                }
+                
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'error': str(e)}), 401
         return f(current_user, *args, **kwargs)
@@ -149,6 +161,19 @@ def add_session_type_column():
         except psycopg2.Error as e:
             if "duplicate column name" in str(e) or "already exists" in str(e):
                 print("ℹ️ Column 'session_type' already exists.")
+            else:
+                raise e
+
+def add_can_block_sessions_column():
+    with psycopg2.connect(POSTGRES_URL) as conn:
+        c = conn.cursor()
+        try:
+            c.execute('ALTER TABLE "user" ADD COLUMN can_block_sessions BOOLEAN DEFAULT FALSE')
+            conn.commit()
+            print("✅ Column 'can_block_sessions' added successfully.")
+        except psycopg2.Error as e:
+            if "duplicate column name" in str(e) or "already exists" in str(e):
+                print("ℹ️ Column 'can_block_sessions' already exists.")
             else:
                 raise e
 
@@ -583,12 +608,29 @@ def _handle_session_registration(current_user, session_id):
             print(f"[DEBUG] User exists: {user_row}")
             if not user_row:
                 return jsonify({'error': 'User does not exist'}), 404
-            # Check if session exists and get its type
-            c.execute('SELECT id, session_type FROM session WHERE id = %s', (session_id,))
+            # Check if session exists and get its details
+            c.execute('SELECT id, session_type, date, start_time FROM session WHERE id = %s', (session_id,))
             session_row = c.fetchone()
             print(f"[DEBUG] Session exists: {session_row}")
             if not session_row:
                 return jsonify({'error': 'Session does not exist'}), 404
+            
+            # Check if session is in the past
+            session_date = session_row[2]
+            session_start_time = session_row[3]
+            
+            if session_date:
+                from datetime import datetime, date, time as dt_time
+                current_date = date.today()
+                
+                if session_date < current_date:
+                    return jsonify({'error': 'Cannot register for past sessions'}), 400
+                elif session_date == current_date and session_start_time:
+                    # If it's today, check the time
+                    current_time = datetime.now().time()
+                    if session_start_time < current_time:
+                        return jsonify({'error': 'Cannot register for sessions that have already started'}), 400
+            
             # Check if session is blocked
             session_type = session_row[1] or 'regular'
             if session_type == 'blocked':
@@ -970,11 +1012,16 @@ def user_profile(current_user):
     if request.method == 'GET':
         with psycopg2.connect(POSTGRES_URL) as conn:
             c = conn.cursor()
-            c.execute('SELECT email, role, name FROM "user" WHERE id = %s', (user_id,))
+            c.execute('SELECT email, role, name, can_block_sessions FROM "user" WHERE id = %s', (user_id,))
             row = c.fetchone()
             if not row:
                 return jsonify({'error': 'User not found'}), 404
-            return jsonify({'email': row[0], 'role': row[1], 'name': row[2] or ''})
+            return jsonify({
+                'email': row[0], 
+                'role': row[1], 
+                'name': row[2] or '', 
+                'can_block_sessions': row[3] or False
+            })
     elif request.method == 'PUT':
         data = request.json
         email = data.get('email')
@@ -991,6 +1038,58 @@ def user_profile(current_user):
                 c.execute('UPDATE "user" SET name = %s WHERE id = %s', (name, user_id))
             conn.commit()
         return jsonify({'message': 'Profile updated'})
+
+@app.route('/users/<int:user_id>/session-blocking-permission', methods=['PUT'])
+@token_required
+def update_session_blocking_permission(current_user, user_id):
+    print(f"🚀 Session blocking permission endpoint called")
+    print(f"👤 Current user: {current_user}")
+    print(f"🎯 Target user ID: {user_id}")
+    
+    # Only admins can update session blocking permissions
+    if current_user['role'] != 'admin':
+        print(f"❌ Access denied - user role: {current_user['role']}")
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.json
+    print(f"📤 Request data: {data}")
+    can_block_sessions = data.get('can_block_sessions', False)
+    print(f"🔄 New permission value: {can_block_sessions}")
+    
+    try:
+        print(f"🔗 Connecting to database...")
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if user exists
+            print(f"🔍 Checking if user {user_id} exists...")
+            c.execute('SELECT id FROM "user" WHERE id = %s', (user_id,))
+            user_exists = c.fetchone()
+            print(f"👤 User exists: {bool(user_exists)}")
+            
+            if not user_exists:
+                print(f"❌ User {user_id} not found")
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Update the session blocking permission
+            print(f"🔄 Updating permission for user {user_id} to {can_block_sessions}")
+            c.execute('UPDATE "user" SET can_block_sessions = %s WHERE id = %s', 
+                     (can_block_sessions, user_id))
+            conn.commit()
+            print(f"✅ Database update successful")
+            
+            return jsonify({
+                'message': 'Session blocking permission updated successfully',
+                'user_id': user_id,
+                'can_block_sessions': can_block_sessions
+            })
+            
+    except psycopg2.Error as e:
+        print(f"💥 Database error updating session blocking permission: {str(e)}")
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"💥 Unexpected error updating session blocking permission: {str(e)}")
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/notifications', methods=['GET'])
 @token_required
@@ -1062,6 +1161,154 @@ def get_user_sessions(current_user):
 @token_required
 def register_to_session_register(current_user, session_id):
     return _handle_session_registration(current_user, session_id)
+
+@app.route('/sessions/<int:session_id>/unregister', methods=['DELETE'])
+@token_required
+def unregister_from_session(current_user, session_id):
+    """Allow users to unregister from a session they've registered for"""
+    user_id = current_user['id']
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if user is registered for this session
+            c.execute('SELECT id FROM user_session WHERE user_id = %s AND session_id = %s', (user_id, session_id))
+            registration = c.fetchone()
+            
+            if not registration:
+                return jsonify({'error': 'You are not registered for this session'}), 404
+            
+            # Remove the user's registration
+            c.execute('DELETE FROM user_session WHERE user_id = %s AND session_id = %s', (user_id, session_id))
+            conn.commit()
+            
+            return jsonify({'message': 'Successfully unregistered from session'})
+            
+    except psycopg2.Error as e:
+        print(f"Database error during unregistration: {e}")
+        return jsonify({'error': 'Database error occurred'}), 500
+
+# --- SESSION BLOCKING ENDPOINTS ---
+@app.route('/sessions/blocked', methods=['GET'])
+@token_required
+def get_blocked_sessions(current_user):
+    """Get all blocked sessions - for users with session blocking permission"""
+    # Check if user has session blocking permission
+    if not current_user.get('can_block_sessions', False):
+        return jsonify({'error': 'Session blocking permission required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            c.execute("""
+                SELECT id, title, date, start_time, end_time, session_type 
+                FROM session 
+                WHERE session_type = 'blocked'
+                ORDER BY date, start_time
+            """)
+            
+            blocked_sessions = []
+            for row in c.fetchall():
+                blocked_sessions.append({
+                    'id': row[0],
+                    'title': row[1],
+                    'date': row[2].isoformat() if row[2] else None,
+                    'start_time': str(row[3]) if row[3] else None,
+                    'end_time': str(row[4]) if row[4] else None,
+                    'session_type': row[5]
+                })
+            
+            return jsonify(blocked_sessions)
+            
+    except psycopg2.Error as e:
+        print(f"Database error fetching blocked sessions: {str(e)}")
+        return jsonify({'error': 'Database error occurred'}), 500
+    except Exception as e:
+        print(f"Unexpected error fetching blocked sessions: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+@app.route('/sessions/<int:session_id>/block', methods=['POST'])
+@token_required
+def block_session(current_user, session_id):
+    """Block a session - for users with session blocking permission"""
+    # Check if user has session blocking permission
+    if not current_user.get('can_block_sessions', False):
+        return jsonify({'error': 'Session blocking permission required'}), 403
+    
+    data = request.json
+    reason = data.get('reason', 'No reason provided')
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if session exists
+            c.execute('SELECT id, title FROM session WHERE id = %s', (session_id,))
+            session = c.fetchone()
+            if not session:
+                return jsonify({'error': 'Session not found'}), 404
+            
+            # Update session to blocked
+            c.execute("""
+                UPDATE session 
+                SET session_type = 'blocked' 
+                WHERE id = %s
+            """, (session_id,))
+            
+            conn.commit()
+            
+            return jsonify({
+                'message': 'Session blocked successfully',
+                'session_id': session_id,
+                'reason': reason
+            })
+            
+    except psycopg2.Error as e:
+        print(f"Database error blocking session: {str(e)}")
+        return jsonify({'error': 'Database error occurred'}), 500
+    except Exception as e:
+        print(f"Unexpected error blocking session: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+@app.route('/sessions/<int:session_id>/block', methods=['DELETE'])
+@token_required
+def unblock_session(current_user, session_id):
+    """Unblock a session - for users with session blocking permission"""
+    # Check if user has session blocking permission
+    if not current_user.get('can_block_sessions', False):
+        return jsonify({'error': 'Session blocking permission required'}), 403
+    
+    try:
+        with psycopg2.connect(POSTGRES_URL) as conn:
+            c = conn.cursor()
+            
+            # Check if session exists
+            c.execute('SELECT id, title FROM session WHERE id = %s', (session_id,))
+            session = c.fetchone()
+            if not session:
+                return jsonify({'error': 'Session not found'}), 404
+            
+            # Update session to regular
+            c.execute("""
+                UPDATE session 
+                SET session_type = 'regular' 
+                WHERE id = %s
+            """, (session_id,))
+            
+            conn.commit()
+            
+            return jsonify({
+                'message': 'Session unblocked successfully',
+                'session_id': session_id
+            })
+            
+    except psycopg2.Error as e:
+        print(f"Database error unblocking session: {str(e)}")
+        return jsonify({'error': 'Database error occurred'}), 500
+    except Exception as e:
+        print(f"Unexpected error unblocking session: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 @app.route('/invite-tokens', methods=['POST'])
 @token_required
@@ -1621,7 +1868,10 @@ if __name__ == "__main__":
     # Try connecting to the database and print any errors
     try:
         create_tables()
+        add_location_column()
+        add_title_column()
         add_session_type_column()
+        add_can_block_sessions_column()
         with psycopg2.connect(POSTGRES_URL) as conn:
             print("[STARTUP] Successfully connected to Postgres!")
     except Exception as e:

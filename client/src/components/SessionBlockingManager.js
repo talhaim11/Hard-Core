@@ -17,20 +17,47 @@ export default function SessionBlockingManager() {
 
   const loadSessions = async () => {
     try {
+      console.log('🔄 Loading sessions for SessionBlockingManager...');
       const sessionsData = await fetchSessions();
-      setSessions(sessionsData);
+      console.log('📊 Raw sessions data:', sessionsData);
+      console.log('📊 Is array?', Array.isArray(sessionsData));
+      console.log('📊 Data length:', sessionsData?.length);
+      console.log('📊 Data type:', typeof sessionsData);
+      console.log('📊 Full data structure:', JSON.stringify(sessionsData, null, 2));
+      
+      // Check if it's wrapped in an object with a sessions property
+      let finalSessions = [];
+      if (Array.isArray(sessionsData)) {
+        finalSessions = sessionsData;
+      } else if (sessionsData && Array.isArray(sessionsData.sessions)) {
+        finalSessions = sessionsData.sessions;
+      } else if (sessionsData && typeof sessionsData === 'object') {
+        console.log('📊 Object keys:', Object.keys(sessionsData));
+        finalSessions = [];
+      } else {
+        finalSessions = [];
+      }
+      
+      setSessions(finalSessions);
+      console.log('✅ Final sessions set:', finalSessions);
+      console.log('✅ Final sessions count:', finalSessions.length);
     } catch (err) {
-      console.error('Failed to fetch sessions:', err);
+      console.error('❌ Failed to fetch sessions:', err);
+      console.error('❌ Error details:', err.response?.data);
+      console.error('❌ Error status:', err.response?.status);
       setMessage('Failed to fetch sessions');
+      setSessions([]); // Set empty array on error
     }
   };
 
   const loadBlockedSessions = async () => {
     try {
       const blockedData = await getBlockedSessions();
-      setBlockedSessions(blockedData);
+      // Ensure we always have an array
+      setBlockedSessions(Array.isArray(blockedData) ? blockedData : []);
     } catch (err) {
       console.error('Failed to fetch blocked sessions:', err);
+      setBlockedSessions([]); // Set empty array on error
     }
   };
 
@@ -76,20 +103,58 @@ export default function SessionBlockingManager() {
   };
 
   const isSessionBlocked = (sessionId) => {
+    // Safety check to ensure blockedSessions is an array
+    if (!Array.isArray(blockedSessions)) {
+      return false;
+    }
     return blockedSessions.some(blocked => blocked.session_id === sessionId);
   };
 
   const formatSessionTime = (session) => {
     const date = new Date(session.date);
-    return `${date.toLocaleDateString()} at ${session.time}`;
+    const startTime = session.start_time || session.time;
+    const endTime = session.end_time;
+    
+    if (endTime) {
+      return `${date.toLocaleDateString()} (${startTime} - ${endTime})`;
+    } else {
+      return `${date.toLocaleDateString()} at ${startTime}`;
+    }
   };
 
   const getUpcomingSessions = () => {
     const now = new Date();
-    return sessions.filter(session => {
+    // Set current time to start of day for fair comparison
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    console.log('🔍 Getting upcoming sessions...');
+    console.log('📅 Current date/time:', now);
+    console.log('� Today (start of day):', today);
+    console.log('�📊 All sessions:', sessions);
+    
+    // Safety check to ensure sessions is an array
+    if (!Array.isArray(sessions)) {
+      console.log('❌ Sessions is not an array:', sessions);
+      return [];
+    }
+    
+    const upcoming = sessions.filter(session => {
       const sessionDate = new Date(session.date);
-      return sessionDate >= now;
+      // Set session date to start of day for fair comparison
+      const sessionDay = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
+      
+      console.log(`📋 Session ${session.id}:`);
+      console.log(`   Raw date: ${session.date}`);
+      console.log(`   Parsed date: ${sessionDate}`);
+      console.log(`   Session day: ${sessionDay}`);
+      console.log(`   Today: ${today}`);
+      console.log(`   Is upcoming? ${sessionDay >= today}`);
+      
+      return sessionDay >= today;
     }).sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    console.log('🔮 Upcoming sessions:', upcoming);
+    return upcoming;
   };
 
   useEffect(() => {
@@ -100,6 +165,7 @@ export default function SessionBlockingManager() {
   }, [message]);
 
   const upcomingSessions = getUpcomingSessions();
+  console.log('🎯 Upcoming sessions for render:', upcomingSessions);
 
   return (
     <div className="session-blocking-manager">

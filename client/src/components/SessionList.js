@@ -48,7 +48,7 @@ const SessionList = ({ token }) => {
 
   const handleCancel = async (sessionId) => {
     try {
-      await axios.delete(`${API_BASE}/sessions/${sessionId}`, {
+      await axios.delete(`${API_BASE}/sessions/${sessionId}/unregister`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const updated = await axios.get(`${API_BASE}/sessions`, {

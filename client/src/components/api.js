@@ -76,7 +76,7 @@ export const fetchUserNotifications = () => apiGet('/notifications').then(data =
 export const fetchUserAchievements = () => apiGet('/achievements').then(data => data.achievements);
 export const deleteUserProfile = () => apiDelete('/profile');
 export const fetchUserSessions = () => apiGet('/user/sessions');
-export const cancelUserSession = (sessionId) => apiDelete(`/sessions/${sessionId}`);
+export const cancelUserSession = (sessionId) => apiDelete(`/sessions/${sessionId}/unregister`);
 export const fetchAdminDashboard = () => apiGet('/admin/dashboard');
 export const fetchAdminUsers = () => apiGet('/admin/users');
 export const createAdminUser = (userData) => apiPost('/admin/users', userData);
