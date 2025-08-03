@@ -92,6 +92,10 @@ body, html {
   margin-bottom: 1.2rem;
   width: 100%;
   color: #fff;
+  overflow: visible !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  contain: layout !important;
 }
 
 .admin-section h2 {

@@ -203,209 +203,85 @@ export default function AdminPanel() {
             const userId = u.id; // Use the actual user ID from the object
             return (
               <li key={i} className="user-item">
-                <div className="user-header" onClick={() => toggleUserExpansion(userId)} style={{backgroundColor: '#f8f9fa', border: '1px solid #ddd'}}>
-                  <div className="user-info" style={{color: '#000', fontSize: '16px', fontWeight: 'bold'}}>
+                <div className="user-header" onClick={() => toggleUserExpansion(userId)}>
+                  <div className="user-info">
                     {u.email || 'No email'} ({u.role || 'No role'})
                   </div>
-                  <div className={`arrow ${expandedUsers[userId] ? 'expanded' : ''}`} style={{color: '#000', fontSize: '18px'}}>
+                  <div className={`arrow ${expandedUsers[userId] ? 'expanded' : ''}`}>
                     ▼
                   </div>
                 </div>
 
                 {expandedUsers[userId] && (
-                  <div style={{
-                    width: '100%',
-                    backgroundColor: '#ff0000',
-                    border: '5px solid #000000',
-                    padding: '20px',
-                    margin: '10px 0 20px 0',
-                    borderRadius: '8px',
-                    display: 'block',
-                    minHeight: '200px',
-                    boxSizing: 'border-box'
-                  }}>
-                    <h3 style={{margin: '0 0 15px 0', color: '#ffffff', fontSize: '18px'}}>User Management Options:</h3>
+                  <div className="user-actions">
+                    <h3 style={{margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px', fontWeight: '600'}}>User Management Options:</h3>
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '10px',
-                      width: '100%',
-                      minHeight: '100px'
+                      gap: '1rem',
+                      width: '100%'
                     }}>
                       <button 
                         onClick={() => fetchSubscriptions(userId)}
                         disabled={loading}
-                        style={{
-                          backgroundColor: '#007bff',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="view-details"
                       >
                         🔍 View Details
                       </button>
                       <button 
                         onClick={() => createSubscriptionHandler(userId, 'monthly')}
                         disabled={loading}
-                        className="admin-management-button monthly"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#28a745',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="create-subscription monthly"
                       >
                         Create Monthly Subscription
                       </button>
                       <button 
                         onClick={() => createSubscriptionHandler(userId, 'one-time')}
                         disabled={loading}
-                        className="admin-management-button one-time"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#ffc107',
-                          color: 'black',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="create-subscription one-time"
                       >
                         Create One-Time Entry
                       </button>
                       <button 
                         onClick={() => createSubscriptionHandler(userId, '5-entries')}
                         disabled={loading}
-                        className="admin-management-button entries-5"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#17a2b8',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="create-subscription five-entries"
                       >
                         Create 5 Entries
                       </button>
                       <button 
                         onClick={() => createSubscriptionHandler(userId, '10-entries')}
                         disabled={loading}
-                        className="admin-management-button entries-10"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#6f42c1',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="create-subscription ten-entries"
                       >
                         Create 10 Entries
                       </button>
                       <button 
                         onClick={() => deleteSubscriptionsHandler(userId)}
                         disabled={loading}
-                        className="admin-management-button delete-subs"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#fd7e14',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="delete-subscriptions-btn"
                       >
                         Delete Subscriptions Options
                       </button>
                       <button 
                         onClick={() => deleteUserHandler(userId)}
                         disabled={loading}
-                        className="admin-management-button delete-user"
-                        style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: '#dc3545',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
-                        }}
+                        className="delete-user-btn"
                       >
                         🗑️ Delete User
                       </button>
                       <button 
                         onClick={() => toggleSessionBlockingPermission(userId, u)}
                         disabled={loading}
-                        className="admin-management-button session-blocking"
+                        className={`create-subscription ${u.can_block_sessions ? 'monthly' : ''}`}
                         style={{
-                          display: 'block',
-                          visibility: 'visible',
-                          opacity: '1',
-                          backgroundColor: u.can_block_sessions ? '#28a745' : '#6c757d',
-                          color: 'white',
-                          padding: '12px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          minHeight: '44px',
-                          margin: '5px'
+                          backgroundColor: u.can_block_sessions ? undefined : '#6c757d'
                         }}
                       >
                         {u.can_block_sessions ? '✅ Can Block Sessions' : '🚫 Enable Session Blocking'}
                       </button>
                       {subscriptions[userId] && (
-                        <div className="subscription-details" style={{gridColumn: '1 / -1', marginTop: '15px'}}>
+                        <div className="subscription-details">
                           <h4>Subscriptions:</h4>
                           <ul className="subscription-list">
                             {subscriptions[userId].map((sub, j) => (

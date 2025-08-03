@@ -8,7 +8,7 @@ import {
 } from './api';
 import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import SessionForm from './SessionForm';
-import CustomTimeInput from './CustomTimeInput';
+import DateTimePicker from './DateTimePicker';
 import '../styles/AdminPage.css';
 import '../styles/SessionForm.css';
 
@@ -239,6 +239,7 @@ const SessionTable = ({ token, showNotification }) => {
   // Quick add session state
   const [quickAddDay, setQuickAddDay] = useState(null); // day index (0-6) or null
   const [quickAddTitle, setQuickAddTitle] = useState("");
+  const [quickAddDate, setQuickAddDate] = useState(""); // Add date state
   const [quickAddStart, setQuickAddStart] = useState("");
   const [quickAddEnd, setQuickAddEnd] = useState("");
   const [quickAddType, setQuickAddType] = useState("regular");
@@ -284,10 +285,15 @@ const SessionTable = ({ token, showNotification }) => {
   const handleQuickAdd = async (dayIdx) => {
     setQuickAddLoading(true);
     try {
-      const week = weeksToShow[selectedWeek];
-      const date = new Date(week[0]);
-      date.setDate(date.getDate() + dayIdx);
-      const dateStr = date.toISOString().slice(0, 10);
+      // Use the quickAddDate if provided, otherwise calculate from dayIdx
+      let dateStr = quickAddDate;
+      if (!dateStr) {
+        const week = weeksToShow[selectedWeek];
+        const date = new Date(week[0]);
+        date.setDate(date.getDate() + dayIdx);
+        dateStr = date.toISOString().slice(0, 10);
+      }
+      
       await handleCreate({
         title: quickAddTitle,
         dates: [dateStr],
@@ -297,6 +303,7 @@ const SessionTable = ({ token, showNotification }) => {
       });
       setQuickAddDay(null);
       setQuickAddTitle("");
+      setQuickAddDate("");
       setQuickAddStart("");
       setQuickAddEnd("");
       setQuickAddType("regular");
@@ -402,21 +409,20 @@ const SessionTable = ({ token, showNotification }) => {
             >הוסף מפגש</button>
             {/* Quick add form for this day */}
             {quickAddDay === day.key && (
-              <form style={{background:'#fff',border:'1px solid #eee',borderRadius:8,padding:8,marginTop:4,boxShadow:'0 2px 8px #0001',zIndex:10,minWidth:180}} onSubmit={e=>{e.preventDefault();handleQuickAdd(day.key);}}>
+              <form style={{background:'#fff',border:'1px solid #eee',borderRadius:8,padding:8,marginTop:4,boxShadow:'0 2px 8px #0001',zIndex:10,minWidth:280}} onSubmit={e=>{e.preventDefault();handleQuickAdd(day.key);}}>
                 <div style={{display:'flex',flexDirection:'column',gap:4}}>
                   <input placeholder="שם אימון" value={quickAddTitle} onChange={e=>setQuickAddTitle(e.target.value)} required style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}} />
-                  <CustomTimeInput
-                    value={quickAddStart}
-                    onChange={e=>setQuickAddStart(e.target.value)}
-                    required
-                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}
-                  />
-                  <CustomTimeInput
-                    value={quickAddEnd}
-                    onChange={e=>setQuickAddEnd(e.target.value)}
-                    required
-                    style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}
-                  />
+                  <div style={{fontSize:12,marginTop:4}}>
+                    <DateTimePicker
+                      selectedDate={quickAddDate}
+                      startTime={quickAddStart}
+                      endTime={quickAddEnd}
+                      onDateChange={e => setQuickAddDate(e.target.value)}
+                      onStartTimeChange={e => setQuickAddStart(e.target.value)}
+                      onEndTimeChange={e => setQuickAddEnd(e.target.value)}
+                      className="compact"
+                    />
+                  </div>
                   <select value={quickAddType} onChange={e=>setQuickAddType(e.target.value)} style={{fontSize:13,padding:4,borderRadius:4,border:'1px solid #ccc'}}>
                     <option value="regular">אימון רגיל</option>
                     <option value="blocked">זמן חסום</option>

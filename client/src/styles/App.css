@@ -141,6 +141,22 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   background: transparent !important;
 }
 
+/* Override for DateTimePicker component - hide the icon completely */
+.datetime-picker input[type="date"]::-webkit-calendar-picker-indicator,
+.session-form .datetime-picker input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  background: none !important;
+  filter: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  pointer-events: none !important;
+  z-index: -999 !important;
+}
+
 /* For Firefox - use dark color scheme */
 input[type="date"],
 input[type="time"] {

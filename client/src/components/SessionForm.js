@@ -9,6 +9,9 @@ const frequencies = [
 ];
 
 const SessionForm = ({ initial, onSubmit, onCancel }) => {
+  // Debug log to see the initial data structure
+  console.log('SessionForm initial data:', initial);
+  
   // Split initial data into separate fields if available
   let initialDate = '', initialStartTime = '', initialEndTime = '';
   if (initial) {
@@ -33,6 +36,18 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
   // Refs for time inputs to force 24-hour format
   const startTimeRef = useRef(null);
   const endTimeRef = useRef(null);
+
+  // Update form fields when initial data changes (important for edit mode)
+  useEffect(() => {
+    if (initial) {
+      setDate(initial.date || '');
+      setStartTime(initial.start_time || '');
+      setEndTime(initial.end_time || '');
+      setSessionTypeOption(initial?.title === 'חופשי' || !initial?.title ? 'חופשי' : 'אחר');
+      setCustomTitle(initial?.title && initial?.title !== 'חופשי' ? initial?.title : '');
+      setSessionType(initial?.session_type || 'regular');
+    }
+  }, [initial]);
 
   // Force 24-hour format on time inputs
   useEffect(() => {

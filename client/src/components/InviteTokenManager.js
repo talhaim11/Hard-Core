@@ -17,12 +17,31 @@ const InviteTokenManager = () => {
     setError('');
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        setError('אין אישור כניסה. אנא התחבר מחדש.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Fetching tokens with token:', token.substring(0, 20) + '...');
       const res = await axios.get(`${API_BASE}/invite-tokens`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      console.log('Tokens response:', res.data);
       setTokens(res.data.tokens || []);
     } catch (e) {
-      setError('שגיאה בטעינת טוקנים');
+      console.error('Error fetching tokens:', e);
+      if (e.response?.status === 401) {
+        setError('אישור הכניסה לא תקין. אנא התחבר מחדש.');
+        localStorage.removeItem('token');
+      } else if (e.response?.status === 403) {
+        setError('אין הרשאה לצפות בטוקנים. נדרשות הרשאות מנהל.');
+      } else {
+        setError('שגיאה בטעינת טוקנים: ' + (e.response?.data?.error || e.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -31,12 +50,25 @@ const InviteTokenManager = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token available for fetching users');
+        return;
+      }
+      
+      console.log('Fetching users with token:', token.substring(0, 20) + '...');
       const res = await axios.get(`${API_BASE}/users`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+      console.log('Users response:', res.data);
       setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error('Error fetching users:', e);
+      if (e.response?.status === 401) {
+        console.warn('Token invalid when fetching users');
+      }
     }
   };
 
@@ -95,7 +127,8 @@ const InviteTokenManager = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    setError(''); setSuccess('');
+    setError(''); 
+    setSuccess('');
     try {
       const token = localStorage.getItem('token');
       const res = await axios.post(`${API_BASE}/invite-tokens`, { email, role }, {
@@ -112,113 +145,75 @@ const InviteTokenManager = () => {
 
   return (
     <div className="invite-token-manager" dir="rtl">
-      <h2>ניהול טוקנים להזמנה</h2>
-      <form onSubmit={handleCreate} style={{ marginBottom: 16 }}>
-        <label>שם משתמש (לא חובה):
-          <input value={email} onChange={e => setEmail(e.target.value)} placeholder="username" />
-        </label>
-        <label>הרשאה:
-          <select value={role} onChange={e => setRole(e.target.value)}>
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
-        <button type="submit">צור טוקן</button>
-      </form>
-      {success && <div style={{ color: 'green' }}>{success}</div>}
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+      <h2 style={{ color: 'white', marginBottom: '1.5rem', fontSize: '1.8rem', fontWeight: '700' }}>
+        ניהול טוקנים להזמנה
+      </h2>
       
-      <div style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <h3>כל הטוקנים</h3>
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
+      
+      <div className="token-form">
+        <form onSubmit={handleCreate} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap', width: '100%' }}>
+          <div className="form-group">
+            <label>שם משתמש (לא חובה):</label>
+            <input 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="username" 
+            />
+          </div>
+          <div className="form-group">
+            <label>הרשאה:</label>
+            <select value={role} onChange={e => setRole(e.target.value)}>
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button type="submit" className="create-btn">צור טוקן</button>
+        </form>
+      </div>
+      
+      <div style={{ 
+        marginBottom: '1rem', 
+        display: 'flex', 
+        gap: '1rem', 
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
+        <h3 style={{ color: 'white', fontSize: '1.3rem', fontWeight: '600', margin: 0 }}>
+          כל הטוקנים
+        </h3>
         <button 
           onClick={cleanupTokens}
-          style={{ 
-            backgroundColor: '#ff6b6b', 
-            color: 'white', 
-            border: 'none', 
-            padding: '8px 16px', 
-            borderRadius: 4, 
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
+          className="delete-btn"
+          style={{ fontSize: '14px' }}
         >
           🧹 נקה טוקנים יתומים
         </button>
         <button 
           onClick={() => { fetchTokens(); fetchUsers(); }}
+          className="create-btn"
           style={{ 
-            backgroundColor: '#4ecdc4', 
-            color: 'white', 
-            border: 'none', 
-            padding: '8px 16px', 
-            borderRadius: 4, 
-            cursor: 'pointer',
-            fontSize: '14px'
+            background: 'linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%)',
+            fontSize: '14px',
+            padding: '0.5rem 1rem'
           }}
         >
           🔄 רענן
         </button>
       </div>
-      {loading ? <div>טוען...</div> : (
-        <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #ddd', borderRadius: 8 }}>
-          <table className="token-table" style={{ 
-            width: '100%', 
-            direction: 'rtl',
-            borderCollapse: 'collapse',
-            tableLayout: 'fixed',
-            wordBreak: 'break-all'
-          }}>
+
+      {loading ? <div className="loading">טוען טוקנים...</div> : (
+        <div className="token-table-container">
+          <table className="token-table" style={{ direction: 'rtl' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>טוקן</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>שם משתמש</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>הרשאה</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>סטטוס</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>נוצר בתאריך</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>מחק טוקן</th>
-                <th style={{ 
-                  padding: '12px', 
-                  border: '1px solid #ddd', 
-                  backgroundColor: '#e9e9e9',
-                  color: '#333',
-                  fontWeight: 'bold'
-                }}>מחק משתמש+טוקנים</th>
+              <tr>
+                <th>טוקן</th>
+                <th>שם משתמש</th>
+                <th>הרשאה</th>
+                <th>סטטוס</th>
+                <th>נוצר בתאריך</th>
+                <th>פעולות</th>
               </tr>
             </thead>
             <tbody>
@@ -227,102 +222,43 @@ const InviteTokenManager = () => {
                 const getStatus = () => {
                   if (t.used && userExists) return { text: 'משתמש קיים', color: '#28a745' };
                   if (t.used && !userExists) return { text: 'יתום', color: '#ff6b6b' };
-                  if (!t.used && t.email) return { text: 'לא שומש', color: '#ffc107' };
+                  if (!t.used && t.email) return { text: 'לא משומש', color: '#ffc107' };
                   return { text: 'חופשי', color: '#6c757d' };
                 };
                 const status = getStatus();
                 
                 return (
-                <tr key={t.id} style={{ 
-                  backgroundColor: userExists ? '#f0f8ff' : (t.used ? '#ffe6e6' : '#fff'),
-                  '&:hover': { backgroundColor: '#f9f9f9' }
-                }}>
-                  <td style={{ 
-                    fontFamily: 'monospace', 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    color: '#333',
-                    fontSize: '12px',
-                    maxWidth: '200px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>{t.token}</td>
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    color: userExists ? '#333' : '#999',
-                    fontWeight: userExists ? 'bold' : 'normal'
-                  }}>
-                    {t.email || '-'}
-                    {userExists && <span style={{ color: '#28a745', marginRight: 5 }}>✓</span>}
-                  </td>
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    color: '#333'
-                  }}>{t.role}</td>
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    color: status.color,
-                    fontWeight: 'bold'
-                  }}>{status.text}</td>
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    color: '#333'
-                  }}>{new Date(t.created_at).toLocaleString()}</td>
-                  
-                  {/* Delete Token Column */}
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    textAlign: 'center'
-                  }}>
-                    <button
-                      onClick={() => deleteToken(t.id, t.email)}
-                      style={{
-                        backgroundColor: '#ffc107',
-                        color: 'black',
-                        border: 'none',
-                        padding: '4px 8px',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      🗑️ מחק טוקן
-                    </button>
-                  </td>
-
-                  {/* Delete User+Tokens Column */}
-                  <td style={{ 
-                    padding: '10px', 
-                    border: '1px solid #ddd',
-                    textAlign: 'center'
-                  }}>
-                    {t.email && t.email.trim() !== '' ? (
-                      <button
-                        onClick={() => deleteUserAndAllTokens(t.email)}
-                        style={{
-                          backgroundColor: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
+                  <tr key={t.id}>
+                    <td className="token-cell">{t.token}</td>
+                    <td>
+                      {t.email || '-'}
+                      {userExists && <span className="check-mark">✓</span>}
+                    </td>
+                    <td>{t.role}</td>
+                    <td style={{ color: status.color, fontWeight: 'bold' }}>
+                      {status.text}
+                    </td>
+                    <td className="date-cell">
+                      {new Date(t.created_at).toLocaleDateString('he-IL')}
+                    </td>
+                    <td>
+                      <button 
+                        onClick={() => deleteToken(t.id, t.email)} 
+                        className="delete-btn"
                       >
-                        � מחק הכל
+                        מחק
                       </button>
-                    ) : (
-                      <span style={{ color: '#999', fontSize: '12px' }}>
-                        אין משתמש
-                      </span>
-                    )}
-                  </td>
-                </tr>
+                      {t.used && userExists && (
+                        <button 
+                          onClick={() => deleteUserAndAllTokens(t.email)}
+                          className="delete-btn"
+                          style={{ marginRight: '0.5rem', fontSize: '11px' }}
+                        >
+                          מחק משתמש
+                        </button>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>

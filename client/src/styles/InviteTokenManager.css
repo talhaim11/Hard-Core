@@ -1,10 +1,40 @@
+/* Modern Invite Token Manager Styles - Matching AdminUserManager */
+
+/* Override the admin-section background for token management */
+.admin-section .invite-token-manager {
+  margin: -1.2rem -1.5rem -1.2rem -1.5rem !important;
+  overflow: hidden !important;
+}
+
 .invite-token-manager {
-  padding: 1rem;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  min-height: 500px;
+  margin: 0 auto !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  position: relative !important;
+  color: white;
+}
+
+/* Adjust margins and overflow for admin-section */
+.admin-section {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Fix all components overflow */
+.invite-token-manager * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .token-form {
@@ -12,10 +42,12 @@
   flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .form-group {
@@ -25,28 +57,50 @@
 }
 
 .form-group label {
-  font-weight: bold;
-  color: #333;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
 }
 
 .form-group input, 
 .form-group select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
   font-size: 14px;
+  background: white;
+  color: #2d3748;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .create-btn {
-  background-color: #007bff;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
   height: fit-content;
   align-self: flex-end;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.create-btn:hover {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
 }
 
 .create-btn:hover {
@@ -54,107 +108,130 @@
 }
 
 .success-message {
-  color: #28a745;
-  background-color: #d4edda;
-  border: 1px solid #c3e6cb;
-  padding: 0.75rem;
-  border-radius: 4px;
+  color: #2f855a;
+  background: rgba(72, 187, 120, 0.1);
+  border: 1px solid rgba(72, 187, 120, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
   margin-bottom: 1rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
 }
 
 .error-message {
-  color: #dc3545;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  padding: 0.75rem;
-  border-radius: 4px;
+  color: #e53e3e;
+  background: rgba(229, 62, 62, 0.1);
+  border: 1px solid rgba(229, 62, 62, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
   margin-bottom: 1rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
 }
 
 .loading {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+  font-weight: 500;
 }
 
 .token-table-container {
   max-height: 500px;
   overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .token-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
   min-width: 600px;
+  background: white;
 }
 
 .token-table th {
-  background-color: #007bff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 0.75rem 0.5rem;
+  padding: 1rem 0.75rem;
   text-align: center;
-  font-weight: bold;
+  font-weight: 600;
   position: sticky;
   top: 0;
   z-index: 10;
-  border-bottom: 2px solid #0056b3;
+  border-bottom: none;
+  font-size: 0.9rem;
 }
 
 .token-table td {
-  padding: 0.5rem;
+  padding: 0.75rem;
   text-align: center;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
+  color: #2d3748;
 }
 
 .token-table tr:hover {
-  background-color: #f8f9fa;
+  background: rgba(102, 126, 234, 0.05);
+  transition: all 0.2s ease;
 }
 
 .token-cell {
   font-family: 'Courier New', monospace;
-  font-size: 10px;
+  font-size: 11px;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #666;
+  color: #4a5568;
+  background: #f7fafc;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.25rem;
 }
 
 .check-mark {
-  color: #28a745;
+  color: #48bb78;
   font-weight: bold;
   margin-right: 0.25rem;
+  font-size: 1.1rem;
 }
 
 .date-cell {
-  font-size: 10px;
-  color: #666;
+  font-size: 11px;
+  color: #718096;
+  font-weight: 500;
 }
 
 .delete-btn {
-  background-color: #dc3545;
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
   cursor: pointer;
   font-size: 12px;
-  transition: background-color 0.2s;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(229, 62, 62, 0.3);
 }
 
 .delete-btn:hover {
-  background-color: #c82333;
+  background: linear-gradient(135deg, #c53030 0%, #9b2c2c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.4);
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
   .invite-token-manager {
-    padding: 0.5rem;
+    padding: 1rem;
   }
   
   .token-form {
@@ -167,6 +244,41 @@
   
   .token-table th,
   .token-table td {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .hour-marker {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+  
+  .clock-face {
+    width: 280px;
+    height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .token-table th,
+  .token-table td {
     padding: 0.25rem;
+    font-size: 10px;
+  }
+  
+  .delete-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 10px;
+  }
+  
+  .clock-face {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .hour-marker {
+    width: 25px;
+    height: 25px;
+    font-size: 10px;
   }
 }

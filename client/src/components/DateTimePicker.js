@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './DateTimePicker.css';
 
 const DateTimePicker = ({ 
@@ -7,33 +7,33 @@ const DateTimePicker = ({
   endTime, 
   onDateChange, 
   onStartTimeChange, 
-  onEndTimeChange 
+  onEndTimeChange,
+  className = ''
 }) => {
   const [showTimePicker, setShowTimePicker] = useState(null); // 'start' or 'end'
-  const [tempTime, setTempTime] = useState({ hours: 0, minutes: 0 });
+
+  // Format date for display (dd/mm/yyyy)
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const openTimePicker = (type) => {
-    const currentTime = type === 'start' ? startTime : endTime;
-    if (currentTime) {
-      const [hours, minutes] = currentTime.split(':').map(Number);
-      setTempTime({ hours, minutes });
-    } else {
-      setTempTime({ hours: 9, minutes: 0 });
-    }
     setShowTimePicker(type);
   };
 
-  const selectTime = (hours, minutes) => {
-    setTempTime({ hours, minutes });
-  };
-
-  const confirmTime = () => {
-    const formattedTime = `${tempTime.hours.toString().padStart(2, '0')}:${tempTime.minutes.toString().padStart(2, '0')}`;
+  const selectTime = (hours, minutes = 0) => {
+    const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     if (showTimePicker === 'start') {
       onStartTimeChange({ target: { value: formattedTime } });
     } else {
       onEndTimeChange({ target: { value: formattedTime } });
     }
+    // Immediately close the picker after selection
     setShowTimePicker(null);
   };
 
@@ -43,14 +43,24 @@ const DateTimePicker = ({
     return `${hours}:${minutes}`;
   };
 
+  // Handle date input click to ensure native picker opens
+  const handleDateClick = (e) => {
+    // Force focus and trigger click on the input to open date picker
+    e.target.focus();
+    if (e.target.showPicker) {
+      e.target.showPicker();
+    }
+  };
+
   return (
-    <div className="datetime-picker">
+    <div className={`datetime-picker ${className}`}>
       {/* Date Section */}
       <label>תאריך
         <input 
           type="date" 
           value={selectedDate} 
           onChange={onDateChange} 
+          onClick={handleDateClick}
           required 
           className="date-input"
         />
@@ -100,74 +110,55 @@ const DateTimePicker = ({
             </div>
             
             <div className="digital-time-display">
-              {`${tempTime.hours.toString().padStart(2, '0')}:${tempTime.minutes.toString().padStart(2, '0')}`}
+              {showTimePicker === 'start' ? formatTime(startTime) : formatTime(endTime)}
             </div>
             
             <div className="clock-container">
               <div className="clock-face">
-                {/* Hour markers */}
-                {Array.from({ length: 24 }, (_, i) => (
-                  <div
-                    key={`hour-${i}`}
-                    className={`hour-marker ${tempTime.hours === i ? 'active' : ''}`}
-                    style={{
-                      transform: `rotate(${(i * 15)}deg) translateY(-80px)`,
-                      transformOrigin: 'center 80px'
-                    }}
-                    onClick={() => selectTime(i, tempTime.minutes)}
-                  >
-                    <span style={{ transform: `rotate(-${i * 15}deg)` }}>
-                      {i.toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                ))}
+                {/* Hour markers - 1 to 24 */}
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hourValue = i + 1; // Display 1-24 instead of 0-23
+                  const currentTime = showTimePicker === 'start' ? startTime : endTime;
+                  const currentHour = currentTime ? parseInt(currentTime.split(':')[0]) : null;
+                  const isActive = currentHour === hourValue;
+                  
+                  // Calculate position using polar coordinates
+                  const angle = ((i * 15) - 90) * (Math.PI / 180); // Convert to radians, start from top
+                  const radius = 140; // Distance from center
+                  const x = Math.cos(angle) * radius;
+                  const y = Math.sin(angle) * radius;
+                  
+                  return (
+                    <div
+                      key={`hour-${hourValue}`}
+                      className={`hour-marker ${isActive ? 'active' : ''}`}
+                      style={{
+                        transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`
+                      }}
+                      onClick={() => {
+                        selectTime(hourValue, 0); // Always set minutes to 0
+                      }}
+                    >
+                      {hourValue}
+                    </div>
+                  );
+                })}
                 
                 {/* Center dot */}
                 <div className="clock-center"></div>
                 
                 {/* Hour hand */}
-                <div 
-                  className="clock-hand hour-hand"
-                  style={{ transform: `rotate(${tempTime.hours * 15}deg)` }}
-                ></div>
+                {(showTimePicker === 'start' ? startTime : endTime) && (
+                  <div 
+                    className="clock-hand hour-hand"
+                    style={{ 
+                      transform: `rotate(${
+                        parseInt((showTimePicker === 'start' ? startTime : endTime).split(':')[0]) * 15 - 90
+                      }deg)` 
+                    }}
+                  ></div>
+                )}
               </div>
-              
-              {/* Minutes slider */}
-              <div className="minutes-section">
-                <label>דקות: {tempTime.minutes.toString().padStart(2, '0')}</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="55"
-                  step="5"
-                  value={tempTime.minutes}
-                  onChange={(e) => setTempTime({ ...tempTime, minutes: parseInt(e.target.value) })}
-                  className="minutes-slider"
-                />
-                <div className="minutes-labels">
-                  <span>00</span>
-                  <span>15</span>
-                  <span>30</span>
-                  <span>45</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="time-picker-actions">
-              <button 
-                type="button" 
-                className="cancel-btn"
-                onClick={() => setShowTimePicker(null)}
-              >
-                ביטול
-              </button>
-              <button 
-                type="button" 
-                className="confirm-btn"
-                onClick={confirmTime}
-              >
-                אישור
-              </button>
             </div>
           </div>
         </div>
