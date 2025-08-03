@@ -6,6 +6,7 @@ import {
   updateSession,
   deleteSession
 } from './api';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import SessionForm from './SessionForm';
 import CustomTimeInput from './CustomTimeInput';
 import '../styles/AdminPage.css';
@@ -359,7 +360,7 @@ const SessionTable = ({ token, showNotification }) => {
         >
           {weeksToShow.map(([start, end], idx) => (
             <option key={idx} value={idx}>
-              {`${start.toLocaleDateString()} - ${end.toLocaleDateString()}`}
+              {`${formatDateDDMMYYYY(start)} - ${formatDateDDMMYYYY(end)}`}
               {idx === 0 ? ' (השבוע הנוכחי)' : ' (שבוע הבא)'}
             </option>
           ))}
@@ -447,7 +448,7 @@ const SessionTable = ({ token, showNotification }) => {
                 backgroundColor: (session.session_type === 'blocked') ? '#fff3e0' : 'transparent',
                 color: (session.session_type === 'blocked') ? '#e65100' : '#333'
               }}>
-                <td>{session.date ? new Date(session.date).toLocaleDateString() : ''}</td>
+                <td>{session.date ? formatDateDDMMYYYY(session.date) : ''}</td>
                 <td>{session.start_time && session.end_time ? `${session.start_time} - ${session.end_time}` : ''}</td>
                 <td>
                   {(session.session_type === 'blocked') && '🚫 '}

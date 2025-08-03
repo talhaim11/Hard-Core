@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import CustomTimeInput from './CustomTimeInput';
+import DateTimePicker from './DateTimePicker';
 
 const MAX_MONTHS_AHEAD = 3;
 const frequencies = [
@@ -18,6 +18,12 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
   }
   
   const [title, setTitle] = useState(initial?.title || '');
+  const [sessionTypeOption, setSessionTypeOption] = useState(
+    initial?.title === 'חופשי' || !initial?.title ? 'חופשי' : 'אחר'
+  );
+  const [customTitle, setCustomTitle] = useState(
+    initial?.title && initial?.title !== 'חופשי' ? initial?.title : ''
+  );
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
@@ -137,33 +143,55 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!date || !startTime || !endTime || !title) return;
+    
+    // Determine the final title based on session type selection
+    const finalTitle = sessionTypeOption === 'חופשי' ? 'חופשי' : customTitle;
+    if (!date || !startTime || !endTime || !finalTitle) return;
+    
     const dates = generateDates();
-    onSubmit({ title, dates, start_time: startTime, end_time: endTime, session_type: sessionType });
+    onSubmit({ title: finalTitle, dates, start_time: startTime, end_time: endTime, session_type: sessionType });
   };
 
   return (
     <form className="session-form" onSubmit={handleSubmit} dir="rtl">
-      <label>שם אימון
-        <input value={title} onChange={e => setTitle(e.target.value)} required />
+      <label>סוג אימון
+        <select 
+          value={sessionTypeOption} 
+          onChange={e => setSessionTypeOption(e.target.value)}
+          style={{
+            padding: '0.5rem',
+            borderRadius: '5px',
+            border: '1px solid #444',
+            background: '#181818',
+            color: '#fff',
+            fontSize: '16px',
+            marginTop: '0.3rem'
+          }}
+        >
+          <option value="חופשי">חופשי</option>
+          <option value="אחר">אחר</option>
+        </select>
       </label>
-      <label>תאריך
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
-      </label>
-      <label>שעת התחלה
-        <CustomTimeInput
-          value={startTime}
-          onChange={e => setStartTime(e.target.value)}
-          required
-        />
-      </label>
-      <label>שעת סיום
-        <CustomTimeInput
-          value={endTime}
-          onChange={e => setEndTime(e.target.value)}
-          required
-        />
-      </label>
+      
+      {sessionTypeOption === 'אחר' && (
+        <label>שם אימון מותאם אישית
+          <input 
+            value={customTitle} 
+            onChange={e => setCustomTitle(e.target.value)} 
+            placeholder="הכנס שם אימון מותאם אישית"
+            required 
+          />
+        </label>
+      )}
+      
+      <DateTimePicker
+        selectedDate={date}
+        startTime={startTime}
+        endTime={endTime}
+        onDateChange={e => setDate(e.target.value)}
+        onStartTimeChange={e => setStartTime(e.target.value)}
+        onEndTimeChange={e => setEndTime(e.target.value)}
+      />
       <label>סוג אימון
         <select value={sessionType} onChange={e => setSessionType(e.target.value)}>
           <option value="regular">אימון רגיל</option>

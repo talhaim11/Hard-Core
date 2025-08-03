@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import '../styles/AdminUserManager.css';
 
 export default function AdminPanel() {
@@ -411,8 +412,8 @@ export default function AdminPanel() {
                               <li key={j} className="subscription-item">
                                 <strong>{sub.type}</strong>
                                 <span className="subscription-info">
-                                  Started: {new Date(sub.start_time).toLocaleDateString()}
-                                  {sub.end_time && ` | Expires: ${new Date(sub.end_time).toLocaleDateString()}`}
+                                  Started: {formatDateDDMMYYYY(sub.start_time)}
+                                  {sub.end_time && ` | Expires: ${formatDateDDMMYYYY(sub.end_time)}`}
                                   {sub.remaining_entries && ` | Remaining: ${sub.remaining_entries}`}
                                   {sub.is_active ? ' | Active' : ' | Inactive'}
                                 </span>

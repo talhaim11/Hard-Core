@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { fetchUserSessions, getUserProfile, fetchSessions, registerSession, cancelSession, updateUserProfile, fetchUserMessages, fetchSessionUsers, blockSession, unblockSession } from './api';
 import { API_BASE } from '../config';
 import axios from 'axios';
+import { formatDateDDMMYYYY } from '../utils/dateFormatter';
 import '../styles/UserDashboard.css';
 
 // Hebrew days of week, starting from Sunday
@@ -57,12 +58,26 @@ const UserDashboard = () => {
     const day = curr.getDay();
     const sunday = new Date(curr);
     sunday.setDate(curr.getDate() - day);
+    // Set to start of day to avoid time comparison issues
+    sunday.setHours(0, 0, 0, 0);
+    
     const saturday = new Date(sunday);
     saturday.setDate(sunday.getDate() + 6);
+    // Set to end of day for Saturday
+    saturday.setHours(23, 59, 59, 999);
+    
     const nextSunday = new Date(sunday);
     nextSunday.setDate(sunday.getDate() + 7);
+    
     const nextSaturday = new Date(nextSunday);
     nextSaturday.setDate(nextSunday.getDate() + 6);
+    nextSaturday.setHours(23, 59, 59, 999);
+    
+    console.log('🐛 Week calculation:', {
+      currentWeek: [sunday, saturday],
+      nextWeek: [nextSunday, nextSaturday]
+    });
+    
     return [ [sunday, saturday], [nextSunday, nextSaturday] ];
   }
 
@@ -109,11 +124,33 @@ const UserDashboard = () => {
   
   const { futureSessions, pastSessions } = separateSessionsByTime(sessions);
   
+  // Debug logging for all sessions
+  console.log('🐛 All sessions debug:', {
+    allSessionsCount: allSessions.length,
+    sundaySessions: allSessions.filter(s => s.date && new Date(s.date).getDay() === 0),
+    selectedWeek: selectedWeek,
+    weekRange: weeksToShow[selectedWeek]
+  });
+  
   // Filter allSessions by selected week - ensure allSessions is an array
   const sessionsInWeek = (Array.isArray(allSessions) ? allSessions : []).filter(session => {
     if (!session.date) return false;
     const d = new Date(session.date);
     const [weekStart, weekEnd] = weeksToShow[selectedWeek];
+    
+    // Debug logging for Sunday sessions
+    if (d.getDay() === 0) { // Sunday
+      console.log('🐛 Sunday session debug:', {
+        sessionTitle: session.title,
+        sessionDate: session.date,
+        parsedDate: d,
+        dayOfWeek: d.getDay(),
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        isInRange: d >= weekStart && d <= weekEnd
+      });
+    }
+    
     return d >= weekStart && d <= weekEnd;
   });
   // Group filtered sessions by day of week
@@ -125,6 +162,17 @@ const UserDashboard = () => {
     if (session.date) {
       const d = new Date(session.date);
       const dayIdx = d.getDay();
+      
+      // Debug logging for session grouping
+      if (dayIdx === 0) { // Sunday
+        console.log('🐛 Grouping Sunday session:', {
+          sessionTitle: session.title,
+          dayIdx: dayIdx,
+          sessionsByDayHasSunday: !!sessionsByDay[0],
+          sessionsByDayLength: sessionsByDay[0]?.length || 0
+        });
+      }
+      
       if (sessionsByDay[dayIdx]) sessionsByDay[dayIdx].push(session);
     }
   });
@@ -507,7 +555,7 @@ const UserDashboard = () => {
                 <ul className="sessions-list">
                   {futureSessions.map(s => (
                     <li key={s.id} style={{backgroundColor: '#e3f2fd', padding: '10px', margin: '5px 0', borderRadius: '5px'}}>
-                      <span>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
+                      <span>{s.title} - {s.date ? formatDateDDMMYYYY(s.date) : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
                       <button onClick={() => handleCancel(s.id)} style={{marginLeft: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '3px'}}>בטל הרשמה</button>
                     </li>
                   ))}
@@ -541,7 +589,7 @@ const UserDashboard = () => {
                   <ul className="sessions-list" style={{marginTop: '10px'}}>
                     {pastSessions.map(s => (
                       <li key={s.id} style={{backgroundColor: '#f0f0f0', padding: '8px', margin: '3px 0', borderRadius: '3px', opacity: '0.8'}}>
-                        <span style={{color: '#666'}}>{s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
+                        <span style={{color: '#666'}}>{s.title} - {s.date ? formatDateDDMMYYYY(s.date) : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}</span>
                         <span style={{marginLeft: '10px', color: '#999', fontSize: '12px'}}>הושלם</span>
                       </li>
                     ))}
@@ -568,7 +616,7 @@ const UserDashboard = () => {
           >
             {weeksToShow.map(([start, end], idx) => (
               <option key={idx} value={idx}>
-                {`${start.toLocaleDateString()} - ${end.toLocaleDateString()}`}
+                {`${formatDateDDMMYYYY(start)} - ${formatDateDDMMYYYY(end)}`}
                 {idx === 0 ? ' (השבוע הנוכחי)' : ' (שבוע הבא)'}
               </option>
             ))}
@@ -618,7 +666,7 @@ const UserDashboard = () => {
               }}>
                 <span>
                   {s.session_type === 'blocked' && '🚫 '}
-                  {s.title} - {s.date ? new Date(s.date).toLocaleDateString() : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}
+                  {s.title} - {s.date ? formatDateDDMMYYYY(s.date) : ''} {s.start_time && s.end_time ? `(${s.start_time} - ${s.end_time})` : ''}
                   {s.session_type === 'blocked' ? ' - זמן חסום' : ` | משתתפים: ${s.participants}`}
                 </span>
                 
@@ -645,7 +693,7 @@ const UserDashboard = () => {
                       {/* Unblock button for authorized users */}
                       {profile && profile.can_block_sessions && (
                         <button 
-                          onClick={() => handleUnblockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          onClick={() => handleUnblockSession(s.id, `${s.title} - ${s.date ? formatDateDDMMYYYY(s.date) : ''}`)}
                           disabled={blockingLoading}
                           style={{
                             backgroundColor: '#28a745',
@@ -668,7 +716,7 @@ const UserDashboard = () => {
                       {/* Block button for authorized users */}
                       {profile && profile.can_block_sessions && (
                         <button 
-                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? formatDateDDMMYYYY(s.date) : ''}`)}
                           disabled={blockingLoading}
                           style={{
                             backgroundColor: '#dc3545',
@@ -704,7 +752,7 @@ const UserDashboard = () => {
                       {/* Block button for authorized users */}
                       {profile && profile.can_block_sessions && (
                         <button 
-                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? new Date(s.date).toLocaleDateString() : ''}`)}
+                          onClick={() => handleBlockSession(s.id, `${s.title} - ${s.date ? formatDateDDMMYYYY(s.date) : ''}`)}
                           disabled={blockingLoading}
                           style={{
                             backgroundColor: '#dc3545',
