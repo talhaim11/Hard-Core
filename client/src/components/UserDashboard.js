@@ -37,7 +37,6 @@ const UserDashboard = () => {
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupError, setPopupError] = useState("");
   const [popupSessionTitle, setPopupSessionTitle] = useState("");
-  const [blockReason, setBlockReason] = useState('');
   const [blockingLoading, setBlockingLoading] = useState(false);
   const settingsRef = useRef(null);
 

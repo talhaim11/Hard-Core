@@ -17,7 +17,6 @@ const SessionForm = ({ initial, onSubmit, onCancel }) => {
     initialEndTime = initial.end_time || '';
   }
   
-  const [title, setTitle] = useState(initial?.title || '');
   const [sessionTypeOption, setSessionTypeOption] = useState(
     initial?.title === 'חופשי' || !initial?.title ? 'חופשי' : 'אחר'
   );

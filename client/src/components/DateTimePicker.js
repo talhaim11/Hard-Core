@@ -37,16 +37,6 @@ const DateTimePicker = ({
     setShowTimePicker(null);
   };
 
-  const generateTimeOptions = () => {
-    const times = [];
-    for (let h = 0; h < 24; h++) {
-      for (let m = 0; m < 60; m += 5) {
-        times.push({ hour: h, minute: m });
-      }
-    }
-    return times;
-  };
-
   const formatTime = (time) => {
     if (!time) return '--:--';
     const [hours, minutes] = time.split(':');
