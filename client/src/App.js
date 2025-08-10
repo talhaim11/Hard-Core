@@ -15,6 +15,7 @@ import './styles/UserPage.css';
 import './styles/WorkoutBoard.css';
 import './styles/Login.css';
 import './styles/UserDashboard.css'; // Import UserDashboard styles
+import { API_BASE } from './config';
 
 
 function App() {
@@ -49,6 +50,28 @@ function App() {
       globalStyle.setAttribute('data-global-24h', 'true');
       document.head.appendChild(globalStyle);
     }
+    // Proactively validate token (forces logout if server invalidates version)
+    async function validateToken() {
+      const t = localStorage.getItem('token');
+      if (!t) return;
+      try {
+        const res = await fetch(`${API_BASE}/users`, { // cheap protected endpoint
+          headers: { Authorization: `Bearer ${t}` }
+        });
+        if (res.status === 401) {
+          console.warn('Token invalid or outdated. Clearing session.');
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          setRole(null);
+          if (window.location.pathname !== '/') {
+            window.location.replace('/');
+          }
+        }
+      } catch (e) {
+        console.warn('Token validation failed (network).');
+      }
+    }
+    validateToken();
   }, []);
 
    return ( 
