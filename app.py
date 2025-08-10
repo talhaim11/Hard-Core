@@ -3,6 +3,7 @@ from flask_cors import CORS
 import psycopg2
 import bcrypt
 import jwt
+import uuid
 import datetime
 from dotenv import load_dotenv
 load_dotenv()
@@ -35,6 +36,20 @@ CORS(
 print("🚀 Flask is starting...")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
+# Deployment / token versioning:
+# If you want all existing tokens to become invalid after a code change / redeploy,
+# set TOKEN_VERSION to a new value (or leave unset to invalidate automatically on each restart).
+# Strategy:
+#   - We compute a DEPLOY_VERSION once at process start.
+#   - Newly issued tokens include this value in the 'ver' claim.
+#   - Validation rejects tokens whose 'ver' != current DEPLOY_VERSION.
+# Options:
+#   1. To keep users logged in across restarts: set a fixed TOKEN_VERSION env var.
+#   2. To force logout on every restart: leave TOKEN_VERSION empty (default) – a new UUID will be generated.
+#   3. To manually force a global logout: change TOKEN_VERSION in the environment and restart.
+DEPLOY_VERSION = os.getenv('TOKEN_VERSION') or str(uuid.uuid4())
+print(f"🔐 Active token deploy version: {DEPLOY_VERSION}")
+
 POSTGRES_URL = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL')
 def token_required(f):
     @wraps(f)
@@ -49,6 +64,9 @@ def token_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            # Enforce deployment / version match
+            if data.get('ver') != DEPLOY_VERSION:
+                return jsonify({'message': 'Token version is outdated. Please login again.'}), 401
             
             # Fetch user details including session blocking permission from database
             with psycopg2.connect(POSTGRES_URL) as conn:
@@ -83,6 +101,8 @@ def admin_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            if data.get('ver') != DEPLOY_VERSION:
+                return jsonify({'message': 'Token version is outdated. Please login again.'}), 401
             current_user = {
               "id": data['sub'],
               "role": data['role']
@@ -97,17 +117,21 @@ def admin_required(f):
 
 # --- AUTH HELPERS ---
 def encode_token(user_id, role):
+    now = datetime.datetime.utcnow()
     payload = {
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=6),
-        'iat': datetime.datetime.utcnow(),
+        'exp': now + datetime.timedelta(hours=6),
+        'iat': now,
         'sub': str(user_id),
-        'role': role
+        'role': role,
+        'ver': DEPLOY_VERSION  # deployment / token version claim
     }
     return jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
 
 def decode_token(token):
     try:
         payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        if payload.get('ver') != DEPLOY_VERSION:
+            return None
         return payload
     except jwt.ExpiredSignatureError:
         return None
